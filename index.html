@@ -30,7 +30,7 @@
             border: 1px solid rgba(255,255,255,0.12);
             border-radius: 16px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-            max-width: 400px;
+            max-width: 500px;
             width: 90%;
             padding: 40px;
             margin: 20px;
@@ -39,9 +39,9 @@
         .login-header { text-align: center; margin-bottom: 32px; }
         
         .logo {
-            width: 240px;
-            height: 140px;
-            margin: 0 auto 20px;
+            width: 380px;
+            height: 220px;
+            margin: 0 auto 25px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -66,6 +66,44 @@
             border-radius: 10px; color: white; font-size: 15px;
         }
         .modern-input:focus { outline: none; border-color: #6366f1; }
+
+        .online-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #34d399;
+            font-size: 12px;
+            margin-bottom: 16px;
+            background: rgba(16,185,129,0.15);
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(16,185,129,0.3);
+        }
+        
+        .online-status::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #34d399;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .online-status.offline {
+            color: #f87171;
+            background: rgba(239,68,68,0.15);
+            border-color: rgba(239,68,68,0.3);
+        }
+        
+        .online-status.offline::before {
+            background: #f87171;
+            animation: none;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
 
         .btn {
             padding: 12px 24px; border: none; border-radius: 10px;
@@ -375,7 +413,7 @@
         <div class="glass-card">
             <div class="login-header">
                 <div class="logo">
-                    <img src="100-year-Celebration-caterpillar.png" alt="Caterpillar 100 Years">
+                    <img src="100-year-Celebration-caterpillar.jpg" alt="Caterpillar 100 Years">
                 </div>
                 <h2>VIN Tracker Pro</h2>
                 <p style="color: #94a3b8;">Secure Access Required</p>
@@ -407,6 +445,12 @@
 
     <!-- MAIN APP -->
     <div class="app-container" id="mainContainer">
+        <div style="text-align: center; margin-bottom: 16px;">
+            <div class="online-status" id="connectionStatus">
+                <i class="fas fa-circle" style="font-size: 8px; margin-right: 4px;"></i> Connecting...
+            </div>
+        </div>
+
         <header class="modern-header">
             <div class="header-left">
                 <div class="brand-logo">
@@ -482,7 +526,7 @@
                 <h3><i class="fas fa-plus-circle"></i> Batch Entry</h3>
                 <span class="badge-manager">Manager Only</span>
             </div>
-            <p class="panel-desc">Paste VINs below. System will auto-detect Serial Numbers.</p>
+            <p class="panel-desc">Paste VINs below. System will auto-detect Serial Numbers. Changes sync instantly to all devices.</p>
             
             <textarea id="batchVins" placeholder="CAT00275CR8Y05091
 CAT00275CKRY05091
@@ -504,8 +548,8 @@ CAT00275CFL12345..."></textarea>
         <div id="techMessage" class="alert-box" style="display: none;">
             <i class="fas fa-info-circle"></i>
             <div>
-                <strong>View Only Mode</strong>
-                <p style="color: #94a3b8; font-size: 14px;">You can update Status from "Pending" to "Inspected/Not Found" and add comments.</p>
+                <strong>Real-time Sync Mode</strong>
+                <p style="color: #94a3b8; font-size: 14px;">Changes you make will be visible instantly to all connected users. You can update Status from "Pending" to "Inspected/Not Found" and add comments.</p>
             </div>
         </div>
 
@@ -588,13 +632,34 @@ CAT00275CFL12345..."></textarea>
         </div>
     </div>
 
+    <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     
+    <!-- FIREBASE SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+    
     <script>
+        // TU CONFIGURACIÓN DE FIREBASE (Ya incluida)
+        const firebaseConfig = {
+            apiKey: "AIzaSyD3uWheIL3CuqF4yAetxLIEt8DMcKY9W98",
+            authDomain: "vin-tracker-f0834.firebaseapp.com",
+            databaseURL: "https://vin-tracker-f0834-default-rtdb.firebaseio.com",
+            projectId: "vin-tracker-f0834",
+            storageBucket: "vin-tracker-f0834.firebasestorage.app",
+            messagingSenderId: "949409357299",
+            appId: "1:949409357299:web:0752144b2db947be1b0686"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const vinsRef = database.ref('vins');
+
         const app = {
             data: [],
             filteredData: [],
@@ -609,7 +674,48 @@ CAT00275CFL12345..."></textarea>
             },
 
             init() {
-                // Login obligatorio - no auto login
+                // Escuchar cambios en tiempo real de Firebase
+                this.setupRealtimeListener();
+                // Verificar estado de conexión
+                this.setupConnectionStatus();
+            },
+
+            setupConnectionStatus() {
+                const statusDiv = document.getElementById('connectionStatus');
+                const connectedRef = database.ref(".info/connected");
+                
+                connectedRef.on("value", (snap) => {
+                    if (snap.val() === true) {
+                        statusDiv.innerHTML = '<i class="fas fa-wifi" style="font-size: 10px; margin-right: 4px;"></i> SYNCHRONIZED';
+                        statusDiv.classList.remove('offline');
+                    } else {
+                        statusDiv.innerHTML = '<i class="fas fa-wifi-slash" style="font-size: 10px; margin-right: 4px;"></i> OFFLINE';
+                        statusDiv.classList.add('offline');
+                    }
+                });
+            },
+
+            setupRealtimeListener() {
+                // Escuchar cambios en tiempo real
+                vinsRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        // Convertir objeto de Firebase a array
+                        this.data = Object.keys(data).map(key => ({
+                            firebaseKey: key,
+                            ...data[key]
+                        }));
+                        // Ordenar por timestamp descendente (más reciente primero)
+                        this.data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    } else {
+                        this.data = [];
+                    }
+                    this.filteredData = [...this.data];
+                    this.updateStats();
+                    this.renderTable();
+                    
+                    document.getElementById('lastUpdate').textContent = 'Updated: ' + new Date().toLocaleString();
+                });
             },
 
             login() {
@@ -631,18 +737,11 @@ CAT00275CFL12345..."></textarea>
                 this.currentUser = email;
                 this.userRole = user.role;
                 
-                localStorage.setItem('vin_tracker_session', JSON.stringify({
-                    email: email,
-                    role: user.role,
-                    timestamp: new Date().toISOString()
-                }));
-                
                 this.showMainInterface();
             },
 
             logout() {
                 if (confirm('Logout?')) {
-                    localStorage.removeItem('vin_tracker_session');
                     location.reload();
                 }
             },
@@ -661,22 +760,6 @@ CAT00275CFL12345..."></textarea>
                     document.getElementById('inputSection').style.display = 'none';
                     document.getElementById('techMessage').style.display = 'flex';
                 }
-                
-                this.loadData();
-                this.updateStats();
-                this.render();
-            },
-
-            loadData() {
-                const saved = localStorage.getItem('vin_tracker_data');
-                this.data = saved ? JSON.parse(saved) : [];
-                this.filteredData = [...this.data];
-            },
-
-            saveData() {
-                localStorage.setItem('vin_tracker_data', JSON.stringify(this.data));
-                this.updateStats();
-                this.render();
             },
 
             updateStats() {
@@ -689,7 +772,6 @@ CAT00275CFL12345..."></textarea>
                 document.getElementById('statInspected').textContent = stats.Inspected;
                 document.getElementById('statNotFound').textContent = stats['Not Found'];
                 document.getElementById('statTotal').textContent = stats.Total;
-                document.getElementById('lastUpdate').textContent = 'Updated: ' + new Date().toLocaleString();
             },
 
             handleSearch() {
@@ -730,7 +812,7 @@ CAT00275CFL12345..."></textarea>
                 document.getElementById('batchVins').focus();
             },
 
-            processBatchVins() {
+            async processBatchVins() {
                 if (this.userRole !== 'manager') return;
                 
                 const textarea = document.getElementById('batchVins');
@@ -747,35 +829,34 @@ CAT00275CFL12345..."></textarea>
 
                 if (vins.length === 0) return;
 
-                let addedCount = 0;
-                const entryDate = new Date().toISOString().split('T')[0];
-
+                // Crear un batch de updates
+                const updates = {};
+                
                 vins.forEach(vin => {
                     const serialMatch = vin.match(/(FL|R8|ZE|KR|2X|P9).*$/i);
                     const serialNumber = serialMatch ? serialMatch[0] : '';
                     
-                    this.data.unshift({
-                        id: Date.now() + Math.random(),
+                    const newKey = vinsRef.push().key;
+                    updates[newKey] = {
                         vin: vin,
                         serialNumber: serialNumber,
-                        entryDate: entryDate,
+                        entryDate: new Date().toISOString().split('T')[0],
                         status: 'Pending',
                         assignedTech: '',
                         lastUpdate: null,
-                        comments: ''
-                    });
-                    addedCount++;
+                        comments: '',
+                        timestamp: Date.now()
+                    };
                 });
 
-                this.saveData();
-                textarea.value = '';
-                if (this.searchTerm) this.handleSearch();
-                alert(`✅ Added ${addedCount} VINs`);
-            },
-
-            render() {
-                this.renderTable();
-                this.updateStats();
+                // Guardar todo de una vez
+                try {
+                    await vinsRef.update(updates);
+                    textarea.value = '';
+                    alert(`✅ Added ${vins.length} VINs`);
+                } catch (error) {
+                    alert('Error adding VINs: ' + error.message);
+                }
             },
 
             renderTable() {
@@ -807,11 +888,11 @@ CAT00275CFL12345..."></textarea>
                     
                     tr.innerHTML = `
                         <td>${index + 1}</td>
-                        <td><input type="text" class="input-cell" value="${row.vin}" data-field="vin" data-id="${row.id}" ${vinReadonly}></td>
+                        <td><input type="text" class="input-cell" value="${row.vin}" data-field="vin" data-key="${row.firebaseKey}" ${vinReadonly}></td>
                         <td><input type="text" class="input-cell" value="${row.serialNumber}" readonly style="font-family: monospace; color: #60a5fa; font-weight: 600;"></td>
-                        <td><input type="date" class="input-cell" value="${row.entryDate}" data-field="entryDate" data-id="${row.id}" ${dateReadonly}></td>
+                        <td><input type="date" class="input-cell" value="${row.entryDate}" data-field="entryDate" data-key="${row.firebaseKey}" ${dateReadonly}></td>
                         <td>
-                            <select class="input-cell" data-field="status" data-id="${row.id}" ${statusDisabled}>
+                            <select class="input-cell" data-field="status" data-key="${row.firebaseKey}" ${statusDisabled}>
                                 <option value="Pending" ${row.status === 'Pending' ? 'selected' : ''}>Pending</option>
                                 <option value="Inspected" ${row.status === 'Inspected' ? 'selected' : ''}>Inspected</option>
                                 <option value="Not Found" ${row.status === 'Not Found' ? 'selected' : ''}>Not Found</option>
@@ -819,7 +900,7 @@ CAT00275CFL12345..."></textarea>
                         </td>
                         <td><input type="text" class="input-cell" value="${row.assignedTech}" readonly style="color: #94a3b8; font-size: 12px;"></td>
                         <td><input type="text" class="input-cell" value="${row.lastUpdate ? new Date(row.lastUpdate).toLocaleString() : ''}" readonly style="color: #94a3b8; font-size: 12px;"></td>
-                        <td><input type="text" class="input-cell" value="${row.comments}" data-field="comments" data-id="${row.id}" placeholder="Add comment..."></td>
+                        <td><input type="text" class="input-cell" value="${row.comments}" data-field="comments" data-key="${row.firebaseKey}" placeholder="Add comment..."></td>
                     `;
                     
                     tbody.appendChild(tr);
@@ -829,67 +910,74 @@ CAT00275CFL12345..."></textarea>
                     let oldValue = input.value;
                     input.addEventListener('focus', () => { oldValue = input.value; });
                     input.addEventListener('change', (e) => {
-                        const id = parseFloat(e.target.dataset.id);
+                        const key = e.target.dataset.key;
                         const field = e.target.dataset.field;
-                        this.handleEdit(id, field, e.target.value, oldValue);
+                        this.handleEdit(key, field, e.target.value, oldValue);
                     });
                 });
             },
 
-            handleEdit(id, field, value, oldValue) {
+            async handleEdit(key, field, value, oldValue) {
                 if (this.userRole === 'tech' && !['status', 'comments'].includes(field)) {
                     this.renderTable();
                     return;
                 }
 
-                const row = this.data.find(r => r.id === id);
+                const row = this.data.find(r => r.firebaseKey === key);
                 if (!row) return;
 
-                if (field === 'vin') {
-                    const vin = value.toString().trim().toUpperCase();
-                    const serialMatch = vin.match(/(FL|R8|ZE|KR|2X|P9).*$/i);
-                    row.serialNumber = serialMatch ? serialMatch[0] : '';
-                    if (vin !== '') {
-                        if (row.status === '') row.status = 'Pending';
-                    } else {
-                        row.status = '';
-                        row.serialNumber = '';
+                try {
+                    if (field === 'vin') {
+                        const vin = value.toString().trim().toUpperCase();
+                        const serialMatch = vin.match(/(FL|R8|ZE|KR|2X|P9).*$/i);
+                        const serialNumber = serialMatch ? serialMatch[0] : '';
+                        
+                        await vinsRef.child(key).update({
+                            vin: vin,
+                            serialNumber: serialNumber
+                        });
+                    } else if (field === 'status') {
+                        let oldStatus = oldValue ? oldValue.toString().trim() : '';
+                        let newStatus = value ? value.toString().trim() : '';
+
+                        if (['in progress', 'not found'].includes(newStatus.toLowerCase())) {
+                            newStatus = 'Not Found';
+                        }
+
+                        if (oldStatus === 'Pending' && newStatus !== 'Pending') {
+                            await vinsRef.child(key).update({
+                                status: newStatus,
+                                assignedTech: this.currentUser,
+                                lastUpdate: new Date().toISOString()
+                            });
+                        } else if (oldStatus !== 'Pending' && this.userRole === 'tech') {
+                            return;
+                        } else {
+                            await vinsRef.child(key).update({
+                                status: newStatus
+                            });
+                        }
+                    } else if (field === 'comments' || field === 'entryDate') {
+                        await vinsRef.child(key).update({
+                            [field]: value
+                        });
                     }
+                } catch (error) {
+                    alert('Error updating: ' + error.message);
+                    this.renderTable();
                 }
-
-                if (field === 'status') {
-                    let oldStatus = oldValue ? oldValue.toString().trim() : '';
-                    let newStatus = value ? value.toString().trim() : '';
-
-                    if (['in progress', 'not found'].includes(newStatus.toLowerCase())) {
-                        newStatus = 'Not Found';
-                        row.status = newStatus;
-                    }
-
-                    if (oldStatus === 'Pending' && newStatus !== 'Pending') {
-                        row.assignedTech = this.currentUser;
-                        row.lastUpdate = new Date().toISOString();
-                    } else if (oldStatus !== 'Pending' && this.userRole === 'tech') {
-                        row.status = oldStatus;
-                        this.render();
-                        return;
-                    }
-                }
-
-                row[field] = value;
-                this.saveData();
-                if (this.searchTerm) this.handleSearch();
             },
 
-            resetData() {
+            async resetData() {
                 if (this.userRole !== 'manager') return;
-                if (confirm('Delete all data?')) {
-                    this.data = [];
-                    this.filteredData = [];
-                    this.searchTerm = '';
-                    document.getElementById('searchInput').value = '';
-                    localStorage.removeItem('vin_tracker_data');
-                    this.render();
+                if (confirm('Delete all data? This will affect all connected devices.')) {
+                    try {
+                        await vinsRef.remove();
+                        this.searchTerm = '';
+                        document.getElementById('searchInput').value = '';
+                    } catch (error) {
+                        alert('Error deleting: ' + error.message);
+                    }
                 }
             },
 
@@ -928,6 +1016,11 @@ CAT00275CFL12345..."></textarea>
             },
 
             generateReport() {
+                document.getElementById('reportModal').style.display = 'block';
+                setTimeout(() => this.renderChart(), 100);
+            },
+
+            renderChart() {
                 const grupos = {};
                 this.data.forEach(row => {
                     let status = row.status || '';
@@ -937,12 +1030,49 @@ CAT00275CFL12345..."></textarea>
                     grupos[status].push(row);
                 });
 
-                this.renderReport(grupos);
-                this.renderChart(grupos);
-                document.getElementById('reportModal').style.display = 'block';
+                const ctx = document.getElementById('statusChart');
+                if (!ctx) return;
+                
+                if (this.chart) this.chart.destroy();
+                
+                const labels = Object.keys(grupos);
+                const data = labels.map(l => grupos[l].length);
+                
+                const colors = labels.map(s => {
+                    if (s === 'Pending') return '#ef4444';
+                    if (s === 'Inspected') return '#10b981';
+                    if (s === 'Not Found') return '#f59e0b';
+                    return '#6366f1';
+                });
+                
+                this.chart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors,
+                            borderWidth: 0,
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { 
+                                position: 'bottom',
+                                labels: { color: '#f8fafc', padding: 20 }
+                            }
+                        },
+                        cutout: '60%'
+                    }
+                });
+                
+                this.renderReportList(grupos);
             },
 
-            renderReport(grupos) {
+            renderReportList(grupos) {
                 const container = document.getElementById('reportContent');
                 const orden = ["Inspected", "Pending", "Not Found"];
                 const todos = orden.concat(Object.keys(grupos).filter(s => !orden.includes(s)));
@@ -951,8 +1081,8 @@ CAT00275CFL12345..."></textarea>
                 todos.forEach(status => {
                     if (!grupos[status]) return;
                     const filas = grupos[status];
-                    const color = this.getStatusColor(status);
-                    const textColor = this.getStatusTextColor(status);
+                    const color = status === 'Pending' ? '#ef4444' : status === 'Inspected' ? '#10b981' : '#f59e0b';
+                    const textColor = status === 'Pending' ? '#f87171' : status === 'Inspected' ? '#34d399' : '#fbbf24';
                     
                     html += `
                         <div style="margin-bottom: 20px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 12px; border-left: 4px solid ${color};">
@@ -972,20 +1102,6 @@ CAT00275CFL12345..."></textarea>
                 });
                 
                 container.innerHTML = html || '<p>No data</p>';
-            },
-
-            getStatusColor(status) {
-                if (status === 'Pending') return '#ef4444';
-                if (status === 'Inspected') return '#10b981';
-                if (status === 'Not Found') return '#f59e0b';
-                return '#6366f1';
-            },
-
-            getStatusTextColor(status) {
-                if (status === 'Pending') return '#f87171';
-                if (status === 'Inspected') return '#34d399';
-                if (status === 'Not Found') return '#fbbf24';
-                return '#a5b4fc';
             },
 
             exportReportPDF() {
@@ -1013,7 +1129,7 @@ CAT00275CFL12345..."></textarea>
                 
                 let yPos = 45;
                 
-                todos.forEach((status, index) => {
+                todos.forEach((status) => {
                     if (!grupos[status]) return;
                     const items = grupos[status];
                     
@@ -1054,47 +1170,6 @@ CAT00275CFL12345..."></textarea>
                 });
                 
                 doc.save(`Analytics_Report_${new Date().toISOString().split('T')[0]}.pdf`);
-            },
-
-            renderChart(grupos) {
-                const ctx = document.getElementById('statusChart');
-                if (!ctx) return;
-                
-                if (this.chart) this.chart.destroy();
-                
-                const labels = Object.keys(grupos);
-                const data = labels.map(l => grupos[l].length);
-                
-                const colors = labels.map(s => {
-                    if (s === 'Pending') return '#ef4444';
-                    if (s === 'Inspected') return '#10b981';
-                    if (s === 'Not Found') return '#f59e0b';
-                    return '#6366f1';
-                });
-                
-                this.chart = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: data,
-                            backgroundColor: colors,
-                            borderWidth: 0,
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { 
-                                position: 'bottom',
-                                labels: { color: '#f8fafc', padding: 20 }
-                            }
-                        },
-                        cutout: '60%'
-                    }
-                });
             },
 
             closeReport() {
