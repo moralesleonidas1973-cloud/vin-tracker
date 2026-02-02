@@ -58,7 +58,6 @@
             display: block;
         }
 
-        /* Responsive para móvil - Logo más pequeño */
         @media (max-width: 640px) {
             .glass-card {
                 padding: 24px 16px;
@@ -149,7 +148,6 @@
 
         .app-container { max-width: 1400px; margin: 0 auto; padding: 24px; display: none; }
         
-        /* Móvil - Padding reducido */
         @media (max-width: 640px) {
             .app-container {
                 padding: 12px;
@@ -165,7 +163,6 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
         
-        /* Móvil - Header apilado */
         @media (max-width: 768px) {
             .modern-header {
                 flex-direction: column;
@@ -235,12 +232,10 @@
             margin-bottom: 24px;
         }
         
-        /* Tablet */
         @media (max-width: 1024px) {
             .stats-row { grid-template-columns: repeat(2, 1fr); }
         }
         
-        /* Móvil */
         @media (max-width: 640px) {
             .stats-row { 
                 grid-template-columns: repeat(2, 1fr); 
@@ -333,7 +328,7 @@
             textarea {
                 min-height: 80px;
                 padding: 12px;
-                font-size: 16px; /* Previere zoom en iOS */
+                font-size: 16px;
             }
             
             .input-actions {
@@ -450,18 +445,16 @@
         .search-results { color: #94a3b8; font-size: 14px; margin-left: 12px; }
         .action-buttons { display: flex; gap: 10px; }
 
-        /* TABLA RESPONSIVE - CLAVE PARA MÓVIL */
         .table-wrap {
             background: rgba(30,41,59,0.8);
             border: 1px solid rgba(255,255,255,0.12);
             border-radius: 16px; 
-            overflow-x: auto; /* Scroll horizontal */
-            -webkit-overflow-scrolling: touch; /* Smooth scroll iOS */
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
             position: relative;
         }
         
-        /* Indicador visual de scroll en móvil */
         .table-wrap::after {
             content: '← Desliza →';
             position: absolute;
@@ -483,7 +476,7 @@
             width: 100%; 
             border-collapse: collapse; 
             font-size: 14px;
-            min-width: 950px; /* Fuerza ancho mínimo para no comprimir columnas */
+            min-width: 950px;
         }
         
         @media (max-width: 640px) {
@@ -496,7 +489,6 @@
                 padding: 10px 8px !important;
             }
             
-            /* Serial Number más visible */
             td:nth-child(3) input {
                 font-size: 12px !important;
                 min-width: 100px;
@@ -508,13 +500,13 @@
             padding: 14px 16px; text-align: left; font-weight: 600;
             color: #a5b4fc; font-size: 12px; text-transform: uppercase;
             border-bottom: 1px solid rgba(255,255,255,0.1);
-            white-space: nowrap; /* No romper texto */
+            white-space: nowrap;
         }
         td { 
             padding: 12px 16px; 
             border-bottom: 1px solid rgba(255,255,255,0.05); 
             color: #f1f5f9; 
-            white-space: nowrap; /* No romper texto */
+            white-space: nowrap;
         }
         tr:hover { background: rgba(255,255,255,0.03); }
         tr.status-pending { background: rgba(239,68,68,0.08); }
@@ -525,11 +517,10 @@
             width: 100%; background: transparent; border: 1px solid transparent;
             padding: 8px; color: white; border-radius: 6px; font-family: inherit;
             font-size: 14px;
-            min-width: 80px; /* Ancho mínimo */
+            min-width: 80px;
         }
         .input-cell:focus { outline: none; background: rgba(255,255,255,0.1); border-color: #6366f1; }
         
-        /* Inputs más pequeños en móvil */
         @media (max-width: 640px) {
             .input-cell {
                 font-size: 13px;
@@ -537,10 +528,9 @@
                 min-width: 60px;
             }
             
-            /* Ajustar anchos específicos */
-            td:nth-child(1) { width: 30px; } /* # */
-            td:nth-child(4) { width: 100px; } /* Fecha */
-            td:nth-child(5) { width: 110px; } /* Status */
+            td:nth-child(1) { width: 30px; }
+            td:nth-child(4) { width: 100px; }
+            td:nth-child(5) { width: 110px; }
         }
         
         select.input-cell {
@@ -640,7 +630,6 @@
         .chart-wrap { height: 400px; display: flex; align-items: center; justify-content: center; }
         .modal-footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center; }
 
-        /* Loading spinner */
         .spinner {
             width: 20px;
             height: 20px;
@@ -654,6 +643,17 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        .debug-info {
+            background: rgba(239,68,68,0.1);
+            border: 1px solid rgba(239,68,68,0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 12px;
+            color: #fca5a5;
+            display: none;
         }
     </style>
 </head>
@@ -687,6 +687,9 @@
                 
                 <div id="loginError" class="error-message"></div>
                 <div id="loginSuccess" class="success-message"></div>
+                
+                <!-- Debug info para solución de problemas -->
+                <div id="debugInfo" class="debug-info"></div>
             </div>
         </div>
     </div>
@@ -829,7 +832,7 @@ CAT00275CFL12345..."></textarea>
         </div>
 
         <div class="table-wrap">
-            <div style="min-width: 950px;"> <!-- Wrapper para mantener ancho -->
+            <div style="min-width: 950px;">
                 <table id="dataTable">
                     <thead>
                         <tr>
@@ -891,20 +894,17 @@ CAT00275CFL12345..."></textarea>
     
     <!-- FIREBASE SDK - Modular v10+ -->
     <script type="module">
-        // Importar Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-        import { getDatabase, ref, onValue, update, remove, set, push } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+        import { getDatabase, ref, onValue, update, remove, push, get } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
         import { 
             getAuth, 
             signInWithEmailAndPassword, 
             signOut, 
             onAuthStateChanged,
             setPersistence,
-            browserLocalPersistence,
-            browserSessionPersistence
+            browserLocalPersistence
         } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
-        // Configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyD3uWheIL3CuqF4yAetxLIEt8DMcKY9W98",
             authDomain: "vin-tracker-f0834.firebaseapp.com",
@@ -915,21 +915,19 @@ CAT00275CFL12345..."></textarea>
             appId: "1:949409357299:web:0752144b2db947be1b0686"
         };
 
-        // Inicializar Firebase
         const firebaseApp = initializeApp(firebaseConfig);
         const database = getDatabase(firebaseApp);
         const auth = getAuth(firebaseApp);
-        const vinsRef = ref(database, 'vins');
+        
+        // Verificar que database URL está correcta
+        console.log('Database URL:', firebaseConfig.databaseURL);
 
-        // Configurar persistencia de sesión (local = mantiene login al recargar)
         setPersistence(auth, browserLocalPersistence);
 
-        // Sistema de Autenticación
         window.auth = {
             currentUser: null,
             userRole: null,
 
-            // Mapa de roles por email (deberías mover esto a Firestore/Realtime DB para producción)
             userRoles: {
                 'manager@cat.com': 'manager',
                 'tech@cat.com': 'tech'
@@ -940,35 +938,37 @@ CAT00275CFL12345..."></textarea>
                 const password = document.getElementById('loginPassword').value;
                 const errorDiv = document.getElementById('loginError');
                 const successDiv = document.getElementById('loginSuccess');
+                const debugDiv = document.getElementById('debugInfo');
                 const btn = document.getElementById('loginBtn');
                 const spinner = document.getElementById('loginSpinner');
                 const btnText = document.getElementById('loginBtnText');
 
-                // Reset mensajes
                 errorDiv.textContent = '';
                 successDiv.textContent = '';
+                debugDiv.style.display = 'none';
 
                 if (!email || !password) {
                     errorDiv.textContent = 'Please enter email and password';
                     return;
                 }
 
-                // UI Loading state
                 btn.disabled = true;
                 spinner.style.display = 'block';
                 btnText.style.display = 'none';
 
                 try {
+                    console.log('Attempting login with:', email);
                     const userCredential = await signInWithEmailAndPassword(auth, email, password);
                     const user = userCredential.user;
                     
-                    // Determinar rol basado en email (en producción, usa Custom Claims o Firestore)
+                    console.log('Login successful:', user.email);
+                    console.log('User UID:', user.uid);
+                    
                     this.userRole = this.userRoles[email] || 'tech';
                     this.currentUser = email;
                     
                     successDiv.textContent = 'Login successful! Loading...';
                     
-                    // Pequeña pausa para mostrar el mensaje de éxito
                     setTimeout(() => {
                         this.showMainInterface();
                     }, 500);
@@ -1001,6 +1001,14 @@ CAT00275CFL12345..."></textarea>
                     }
                     
                     errorDiv.textContent = errorMsg;
+                    
+                    // Mostrar debug info
+                    debugDiv.innerHTML = `
+                        <strong>Error técnico:</strong><br>
+                        Code: ${error.code}<br>
+                        Message: ${error.message}
+                    `;
+                    debugDiv.style.display = 'block';
                 } finally {
                     btn.disabled = false;
                     spinner.style.display = 'none';
@@ -1035,40 +1043,39 @@ CAT00275CFL12345..."></textarea>
                     document.getElementById('techMessage').style.display = 'flex';
                 }
 
-                // Inicializar la app principal
                 app.init();
             },
 
             init() {
-                // Observador de estado de autenticación
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        // Usuario logueado
+                        console.log('Auth state: User is signed in', user.email);
                         this.currentUser = user.email;
                         this.userRole = this.userRoles[user.email] || 'tech';
                         this.showMainInterface();
                     } else {
-                        // No hay usuario, mostrar login
+                        console.log('Auth state: No user');
                         document.getElementById('loginModal').style.display = 'flex';
                         document.getElementById('mainContainer').style.display = 'none';
                     }
                 });
 
-                // Event listeners para Enter key
                 document.getElementById('loginPassword').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.login();
                 });
             }
         };
 
-        // Aplicación Principal
         window.app = {
             data: [],
             filteredData: [],
             chart: null,
             searchTerm: '',
+            vinsRef: null,
 
             init() {
+                // Crear referencia a la base de datos
+                this.vinsRef = ref(database, 'vins');
                 this.setupRealtimeListener();
                 this.setupConnectionStatus();
             },
@@ -1089,7 +1096,10 @@ CAT00275CFL12345..."></textarea>
             },
 
             setupRealtimeListener() {
-                onValue(vinsRef, (snapshot) => {
+                console.log('Setting up realtime listener...');
+                
+                onValue(this.vinsRef, (snapshot) => {
+                    console.log('Data received from Firebase');
                     const data = snapshot.val();
                     if (data) {
                         this.data = Object.keys(data).map(key => ({
@@ -1105,6 +1115,9 @@ CAT00275CFL12345..."></textarea>
                     this.renderTable();
                     
                     document.getElementById('lastUpdate').textContent = 'Updated: ' + new Date().toLocaleString();
+                }, (error) => {
+                    console.error('Error reading data:', error);
+                    alert('Error reading data: ' + error.message);
                 });
             },
 
@@ -1159,7 +1172,10 @@ CAT00275CFL12345..."></textarea>
             },
 
             async processBatchVins() {
-                if (window.auth.userRole !== 'manager') return;
+                if (window.auth.userRole !== 'manager') {
+                    alert('Only managers can add VINs');
+                    return;
+                }
                 
                 const textarea = document.getElementById('batchVins');
                 const text = textarea.value.trim();
@@ -1175,13 +1191,17 @@ CAT00275CFL12345..."></textarea>
 
                 if (vins.length === 0) return;
 
+                console.log('Processing VINs:', vins);
+                console.log('Current user:', auth.currentUser?.email);
+                console.log('User UID:', auth.currentUser?.uid);
+
                 const updates = {};
                 
                 vins.forEach(vin => {
                     const serialMatch = vin.match(/(FL|R8|ZE|KR|2X|P9).*$/i);
                     const serialNumber = serialMatch ? serialMatch[0] : '';
                     
-                    const newKey = push(vinsRef).key;
+                    const newKey = push(this.vinsRef).key;
                     updates[newKey] = {
                         vin: vin,
                         serialNumber: serialNumber,
@@ -1190,16 +1210,20 @@ CAT00275CFL12345..."></textarea>
                         assignedTech: '',
                         lastUpdate: null,
                         comments: '',
-                        timestamp: Date.now()
+                        timestamp: Date.now(),
+                        createdBy: auth.currentUser?.email || 'unknown'
                     };
                 });
 
                 try {
-                    await update(vinsRef, updates);
+                    console.log('Sending updates to Firebase...', updates);
+                    await update(this.vinsRef, updates);
+                    console.log('Updates sent successfully');
                     textarea.value = '';
                     alert(`✅ Added ${vins.length} VINs`);
                 } catch (error) {
-                    alert('Error adding VINs: ' + error.message);
+                    console.error('Error adding VINs:', error);
+                    alert('Error adding VINs: ' + error.message + '\n\nVerifica las reglas de seguridad en Firebase Console.');
                 }
             },
 
@@ -1311,6 +1335,7 @@ CAT00275CFL12345..."></textarea>
                         await update(rowRef, updateData);
                     }
                 } catch (error) {
+                    console.error('Error updating:', error);
                     alert('Error updating: ' + error.message);
                     this.renderTable();
                 }
@@ -1320,10 +1345,11 @@ CAT00275CFL12345..."></textarea>
                 if (window.auth.userRole !== 'manager') return;
                 if (confirm('Delete all data? This will affect all connected devices.')) {
                     try {
-                        await remove(vinsRef);
+                        await remove(this.vinsRef);
                         this.searchTerm = '';
                         document.getElementById('searchInput').value = '';
                     } catch (error) {
+                        console.error('Error deleting:', error);
                         alert('Error deleting: ' + error.message);
                     }
                 }
@@ -1525,12 +1551,10 @@ CAT00275CFL12345..."></textarea>
             }
         };
 
-        // Inicializar autenticación al cargar
         document.addEventListener('DOMContentLoaded', () => {
             window.auth.init();
         });
 
-        // Cerrar modales al hacer click fuera
         window.onclick = (e) => {
             if (e.target.classList.contains('modal') && e.target.id !== 'loginModal') {
                 e.target.style.display = 'none';
