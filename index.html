@@ -138,8 +138,14 @@
             box-shadow: 0 4px 15px rgba(99,102,241,0.4);
         }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,0.6); }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
 
         .error-message { color: #ef4444; margin-top: 12px; text-align: center; font-size: 14px; }
+        .success-message { color: #34d399; margin-top: 12px; text-align: center; font-size: 14px; }
 
         .app-container { max-width: 1400px; margin: 0 auto; padding: 24px; display: none; }
         
@@ -633,6 +639,22 @@
         
         .chart-wrap { height: 400px; display: flex; align-items: center; justify-content: center; }
         .modal-footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center; }
+
+        /* Loading spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -649,12 +671,8 @@
             
             <div class="login-form">
                 <div class="input-group">
-                    <label>User</label>
-                    <select id="loginEmail" class="modern-input">
-                        <option value="">Select user...</option>
-                        <option value="manager@cat.com">👑 Manager (Full Access)</option>
-                        <option value="tech@cat.com">🔧 Technician (View Only)</option>
-                    </select>
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" class="modern-input" placeholder="manager@cat.com">
                 </div>
                 
                 <div class="input-group">
@@ -662,11 +680,13 @@
                     <input type="password" id="loginPassword" class="modern-input" placeholder="••••••••">
                 </div>
                 
-                <button onclick="app.login()" class="btn btn-primary">
-                    <i class="fas fa-sign-in-alt"></i> Access System
+                <button onclick="auth.login()" class="btn btn-primary" id="loginBtn">
+                    <span class="spinner" id="loginSpinner"></span>
+                    <span id="loginBtnText"><i class="fas fa-sign-in-alt"></i> Access System</span>
                 </button>
                 
                 <div id="loginError" class="error-message"></div>
+                <div id="loginSuccess" class="success-message"></div>
             </div>
         </div>
     </div>
@@ -700,7 +720,7 @@
                         <span id="currentUser" class="user-name">user@cat.com</span>
                         <span id="userRole" class="role-tag">manager</span>
                     </div>
-                    <button onclick="app.logout()" class="btn-logout" title="Logout">
+                    <button onclick="auth.logout()" class="btn-logout" title="Logout">
                         <i class="fas fa-power-off"></i>
                     </button>
                 </div>
@@ -784,7 +804,7 @@ CAT00275CFL12345..."></textarea>
         <div class="toolbar">
             <div style="display: flex; align-items: center; flex: 1;">
                 <div class="search-box">
-                    <i class="fas fa-search搜索-icon"></i>
+                    <i class="fas fa-search search-icon"></i>
                     <input type="text" id="searchInput" class="search-input" 
                            placeholder="Search VIN or Serial Number..." 
                            onkeyup="app.handleSearch()">
@@ -869,12 +889,22 @@ CAT00275CFL12345..."></textarea>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     
-    <!-- FIREBASE SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-    
-    <script>
-        // TU CONFIGURACIÓN DE FIREBASE
+    <!-- FIREBASE SDK - Modular v10+ -->
+    <script type="module">
+        // Importar Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        import { getDatabase, ref, onValue, update, remove, set, push } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+        import { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            signOut, 
+            onAuthStateChanged,
+            setPersistence,
+            browserLocalPersistence,
+            browserSessionPersistence
+        } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+
+        // Configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyD3uWheIL3CuqF4yAetxLIEt8DMcKY9W98",
             authDomain: "vin-tracker-f0834.firebaseapp.com",
@@ -886,88 +916,107 @@ CAT00275CFL12345..."></textarea>
         };
 
         // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        const vinsRef = database.ref('vins');
+        const firebaseApp = initializeApp(firebaseConfig);
+        const database = getDatabase(firebaseApp);
+        const auth = getAuth(firebaseApp);
+        const vinsRef = ref(database, 'vins');
 
-        const app = {
-            data: [],
-            filteredData: [],
+        // Configurar persistencia de sesión (local = mantiene login al recargar)
+        setPersistence(auth, browserLocalPersistence);
+
+        // Sistema de Autenticación
+        window.auth = {
             currentUser: null,
             userRole: null,
-            chart: null,
-            searchTerm: '',
-            
-            credentials: {
-                'manager@cat.com': { password: 'admin123', role: 'manager' },
-                'tech@cat.com': { password: 'tech123', role: 'tech' }
+
+            // Mapa de roles por email (deberías mover esto a Firestore/Realtime DB para producción)
+            userRoles: {
+                'manager@cat.com': 'manager',
+                'tech@cat.com': 'tech'
             },
 
-            init() {
-                this.setupRealtimeListener();
-                this.setupConnectionStatus();
-            },
-
-            setupConnectionStatus() {
-                const statusDiv = document.getElementById('connectionStatus');
-                const connectedRef = database.ref(".info/connected");
-                
-                connectedRef.on("value", (snap) => {
-                    if (snap.val() === true) {
-                        statusDiv.innerHTML = '<i class="fas fa-wifi" style="font-size: 10px; margin-right: 4px;"></i> SYNCHRONIZED';
-                        statusDiv.classList.remove('offline');
-                    } else {
-                        statusDiv.innerHTML = '<i class="fas fa-wifi-slash" style="font-size: 10px; margin-right: 4px;"></i> OFFLINE';
-                        statusDiv.classList.add('offline');
-                    }
-                });
-            },
-
-            setupRealtimeListener() {
-                vinsRef.on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        this.data = Object.keys(data).map(key => ({
-                            firebaseKey: key,
-                            ...data[key]
-                        }));
-                        this.data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                    } else {
-                        this.data = [];
-                    }
-                    this.filteredData = [...this.data];
-                    this.updateStats();
-                    this.renderTable();
-                    
-                    document.getElementById('lastUpdate').textContent = 'Updated: ' + new Date().toLocaleString();
-                });
-            },
-
-            login() {
-                const email = document.getElementById('loginEmail').value;
+            async login() {
+                const email = document.getElementById('loginEmail').value.trim();
                 const password = document.getElementById('loginPassword').value;
                 const errorDiv = document.getElementById('loginError');
-                
+                const successDiv = document.getElementById('loginSuccess');
+                const btn = document.getElementById('loginBtn');
+                const spinner = document.getElementById('loginSpinner');
+                const btnText = document.getElementById('loginBtnText');
+
+                // Reset mensajes
+                errorDiv.textContent = '';
+                successDiv.textContent = '';
+
                 if (!email || !password) {
-                    errorDiv.textContent = 'Please enter credentials';
+                    errorDiv.textContent = 'Please enter email and password';
                     return;
                 }
-                
-                const user = this.credentials[email];
-                if (!user || user.password !== password) {
-                    errorDiv.textContent = 'Invalid credentials';
-                    return;
+
+                // UI Loading state
+                btn.disabled = true;
+                spinner.style.display = 'block';
+                btnText.style.display = 'none';
+
+                try {
+                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                    const user = userCredential.user;
+                    
+                    // Determinar rol basado en email (en producción, usa Custom Claims o Firestore)
+                    this.userRole = this.userRoles[email] || 'tech';
+                    this.currentUser = email;
+                    
+                    successDiv.textContent = 'Login successful! Loading...';
+                    
+                    // Pequeña pausa para mostrar el mensaje de éxito
+                    setTimeout(() => {
+                        this.showMainInterface();
+                    }, 500);
+
+                } catch (error) {
+                    console.error('Login error:', error);
+                    let errorMsg = 'Login failed. ';
+                    
+                    switch(error.code) {
+                        case 'auth/invalid-email':
+                            errorMsg += 'Invalid email format.';
+                            break;
+                        case 'auth/user-disabled':
+                            errorMsg += 'Account disabled.';
+                            break;
+                        case 'auth/user-not-found':
+                            errorMsg += 'User not found.';
+                            break;
+                        case 'auth/wrong-password':
+                            errorMsg += 'Incorrect password.';
+                            break;
+                        case 'auth/invalid-credential':
+                            errorMsg += 'Invalid credentials.';
+                            break;
+                        case 'auth/network-request-failed':
+                            errorMsg += 'Network error. Check connection.';
+                            break;
+                        default:
+                            errorMsg += error.message;
+                    }
+                    
+                    errorDiv.textContent = errorMsg;
+                } finally {
+                    btn.disabled = false;
+                    spinner.style.display = 'none';
+                    btnText.style.display = 'inline-flex';
                 }
-                
-                this.currentUser = email;
-                this.userRole = user.role;
-                
-                this.showMainInterface();
             },
 
-            logout() {
+            async logout() {
                 if (confirm('Logout?')) {
-                    location.reload();
+                    try {
+                        await signOut(auth);
+                        location.reload();
+                    } catch (error) {
+                        console.error('Logout error:', error);
+                        alert('Error during logout: ' + error.message);
+                    }
                 }
             },
 
@@ -985,6 +1034,78 @@ CAT00275CFL12345..."></textarea>
                     document.getElementById('inputSection').style.display = 'none';
                     document.getElementById('techMessage').style.display = 'flex';
                 }
+
+                // Inicializar la app principal
+                app.init();
+            },
+
+            init() {
+                // Observador de estado de autenticación
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        // Usuario logueado
+                        this.currentUser = user.email;
+                        this.userRole = this.userRoles[user.email] || 'tech';
+                        this.showMainInterface();
+                    } else {
+                        // No hay usuario, mostrar login
+                        document.getElementById('loginModal').style.display = 'flex';
+                        document.getElementById('mainContainer').style.display = 'none';
+                    }
+                });
+
+                // Event listeners para Enter key
+                document.getElementById('loginPassword').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.login();
+                });
+            }
+        };
+
+        // Aplicación Principal
+        window.app = {
+            data: [],
+            filteredData: [],
+            chart: null,
+            searchTerm: '',
+
+            init() {
+                this.setupRealtimeListener();
+                this.setupConnectionStatus();
+            },
+
+            setupConnectionStatus() {
+                const statusDiv = document.getElementById('connectionStatus');
+                const connectedRef = ref(database, ".info/connected");
+                
+                onValue(connectedRef, (snap) => {
+                    if (snap.val() === true) {
+                        statusDiv.innerHTML = '<i class="fas fa-wifi" style="font-size: 10px; margin-right: 4px;"></i> SYNCHRONIZED';
+                        statusDiv.classList.remove('offline');
+                    } else {
+                        statusDiv.innerHTML = '<i class="fas fa-wifi-slash" style="font-size: 10px; margin-right: 4px;"></i> OFFLINE';
+                        statusDiv.classList.add('offline');
+                    }
+                });
+            },
+
+            setupRealtimeListener() {
+                onValue(vinsRef, (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        this.data = Object.keys(data).map(key => ({
+                            firebaseKey: key,
+                            ...data[key]
+                        }));
+                        this.data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    } else {
+                        this.data = [];
+                    }
+                    this.filteredData = [...this.data];
+                    this.updateStats();
+                    this.renderTable();
+                    
+                    document.getElementById('lastUpdate').textContent = 'Updated: ' + new Date().toLocaleString();
+                });
             },
 
             updateStats() {
@@ -1038,7 +1159,7 @@ CAT00275CFL12345..."></textarea>
             },
 
             async processBatchVins() {
-                if (this.userRole !== 'manager') return;
+                if (window.auth.userRole !== 'manager') return;
                 
                 const textarea = document.getElementById('batchVins');
                 const text = textarea.value.trim();
@@ -1060,7 +1181,7 @@ CAT00275CFL12345..."></textarea>
                     const serialMatch = vin.match(/(FL|R8|ZE|KR|2X|P9).*$/i);
                     const serialNumber = serialMatch ? serialMatch[0] : '';
                     
-                    const newKey = vinsRef.push().key;
+                    const newKey = push(vinsRef).key;
                     updates[newKey] = {
                         vin: vin,
                         serialNumber: serialNumber,
@@ -1074,7 +1195,7 @@ CAT00275CFL12345..."></textarea>
                 });
 
                 try {
-                    await vinsRef.update(updates);
+                    await update(vinsRef, updates);
                     textarea.value = '';
                     alert(`✅ Added ${vins.length} VINs`);
                 } catch (error) {
@@ -1102,7 +1223,7 @@ CAT00275CFL12345..."></textarea>
                     const tr = document.createElement('tr');
                     tr.className = row.status ? `status-${row.status.toLowerCase().replace(' ', '-')}` : '';
                     
-                    const isManager = this.userRole === 'manager';
+                    const isManager = window.auth.userRole === 'manager';
                     const isPending = row.status === 'Pending';
                     
                     const vinReadonly = !isManager ? 'readonly style="color: #64748b;"' : '';
@@ -1141,7 +1262,7 @@ CAT00275CFL12345..."></textarea>
             },
 
             async handleEdit(key, field, value, oldValue) {
-                if (this.userRole === 'tech' && !['status', 'comments'].includes(field)) {
+                if (window.auth.userRole === 'tech' && !['status', 'comments'].includes(field)) {
                     this.renderTable();
                     return;
                 }
@@ -1150,12 +1271,14 @@ CAT00275CFL12345..."></textarea>
                 if (!row) return;
 
                 try {
+                    const rowRef = ref(database, `vins/${key}`);
+                    
                     if (field === 'vin') {
                         const vin = value.toString().trim().toUpperCase();
                         const serialMatch = vin.match(/(FL|R8|ZE|KR|2X|P9).*$/i);
                         const serialNumber = serialMatch ? serialMatch[0] : '';
                         
-                        await vinsRef.child(key).update({
+                        await update(rowRef, {
                             vin: vin,
                             serialNumber: serialNumber
                         });
@@ -1168,22 +1291,24 @@ CAT00275CFL12345..."></textarea>
                         }
 
                         if (oldStatus === 'Pending' && newStatus !== 'Pending') {
-                            await vinsRef.child(key).update({
+                            await update(rowRef, {
                                 status: newStatus,
-                                assignedTech: this.currentUser,
+                                assignedTech: window.auth.currentUser,
                                 lastUpdate: new Date().toISOString()
                             });
-                        } else if (oldStatus !== 'Pending' && this.userRole === 'tech') {
+                        } else if (oldStatus !== 'Pending' && window.auth.userRole === 'tech') {
                             return;
                         } else {
-                            await vinsRef.child(key).update({
+                            await update(rowRef, {
                                 status: newStatus
                             });
                         }
                     } else if (field === 'comments' || field === 'entryDate') {
-                        await vinsRef.child(key).update({
-                            [field]: value
-                        });
+                        const updateData = { [field]: value };
+                        if (field === 'comments') {
+                            updateData.lastUpdate = new Date().toISOString();
+                        }
+                        await update(rowRef, updateData);
                     }
                 } catch (error) {
                     alert('Error updating: ' + error.message);
@@ -1192,10 +1317,10 @@ CAT00275CFL12345..."></textarea>
             },
 
             async resetData() {
-                if (this.userRole !== 'manager') return;
+                if (window.auth.userRole !== 'manager') return;
                 if (confirm('Delete all data? This will affect all connected devices.')) {
                     try {
-                        await vinsRef.remove();
+                        await remove(vinsRef);
                         this.searchTerm = '';
                         document.getElementById('searchInput').value = '';
                     } catch (error) {
@@ -1226,7 +1351,7 @@ CAT00275CFL12345..."></textarea>
                 doc.setFontSize(20);
                 doc.text('VIN Tracker Report', 14, 20);
                 doc.setFontSize(10);
-                doc.text(`Generated: ${new Date().toLocaleString()} | User: ${this.currentUser}`, 14, 30);
+                doc.text(`Generated: ${new Date().toLocaleString()} | User: ${window.auth.currentUser}`, 14, 30);
                 
                 doc.autoTable({
                     head: [['VIN', 'Serial Number', 'Date', 'Status', 'Tech', 'Updated', 'Comments']],
@@ -1336,7 +1461,7 @@ CAT00275CFL12345..."></textarea>
                 doc.setFontSize(18);
                 doc.text('Status Analytics Report', 14, 20);
                 doc.setFontSize(10);
-                doc.text(`Generated: ${new Date().toLocaleString()} | User: ${this.currentUser}`, 14, 30);
+                doc.text(`Generated: ${new Date().toLocaleString()} | User: ${window.auth.currentUser}`, 14, 30);
                 
                 const grupos = {};
                 this.data.forEach(row => {
@@ -1400,12 +1525,12 @@ CAT00275CFL12345..."></textarea>
             }
         };
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => app.init());
-        } else {
-            app.init();
-        }
+        // Inicializar autenticación al cargar
+        document.addEventListener('DOMContentLoaded', () => {
+            window.auth.init();
+        });
 
+        // Cerrar modales al hacer click fuera
         window.onclick = (e) => {
             if (e.target.classList.contains('modal') && e.target.id !== 'loginModal') {
                 e.target.style.display = 'none';
