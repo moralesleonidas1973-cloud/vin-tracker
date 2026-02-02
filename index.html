@@ -645,30 +645,31 @@
             100% { transform: rotate(360deg); }
         }
 
-        .debug-info {
-            background: rgba(239,68,68,0.1);
-            border: 1px solid rgba(239,68,68,0.3);
+        .error-help {
+            background: rgba(59,130,246,0.1);
+            border: 1px solid rgba(59,130,246,0.3);
             border-radius: 8px;
-            padding: 12px;
-            margin-top: 12px;
-            font-size: 12px;
-            color: #fca5a5;
-            display: none;
+            padding: 16px;
+            margin-top: 16px;
+            font-size: 13px;
+            color: #93c5fd;
         }
 
-        .auth-debug {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.8);
-            color: #00ff00;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 11px;
+        .error-help ol {
+            margin-left: 16px;
+            margin-top: 8px;
+        }
+
+        .error-help li {
+            margin-bottom: 4px;
+        }
+
+        .error-help code {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
             font-family: monospace;
-            z-index: 9999;
-            max-width: 300px;
-            display: none;
+            color: #fca5a5;
         }
     </style>
 </head>
@@ -703,7 +704,8 @@
                 <div id="loginError" class="error-message"></div>
                 <div id="loginSuccess" class="success-message"></div>
                 
-                <div id="debugInfo" class="debug-info"></div>
+                <!-- Aquí aparecerán instrucciones si hay error de dominio -->
+                <div id="errorHelp" style="display: none;"></div>
             </div>
         </div>
     </div>
@@ -899,9 +901,6 @@ CAT00275CFL12345..."></textarea>
         </div>
     </div>
 
-    <!-- DEBUG PANEL (presiona F12 para ver) -->
-    <div id="authDebug" class="auth-debug"></div>
-
     <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
@@ -936,29 +935,9 @@ CAT00275CFL12345..."></textarea>
         const database = getDatabase(firebaseApp);
         const auth = getAuth(firebaseApp);
 
-        // Variable global para la referencia de la base de datos
         let vinsRef = null;
 
         setPersistence(auth, browserLocalPersistence);
-
-        // Función para actualizar debug panel
-        function updateDebug() {
-            const debugDiv = document.getElementById('authDebug');
-            const user = auth.currentUser;
-            debugDiv.innerHTML = `
-                <strong>Auth Status:</strong> ${user ? '✅ Authenticated' : '❌ Not authenticated'}<br>
-                ${user ? `
-                <strong>Email:</strong> ${user.email}<br>
-                <strong>UID:</strong> ${user.uid}<br>
-                <strong>Anonymous:</strong> ${user.isAnonymous}<br>
-                <strong>Email Verified:</strong> ${user.emailVerified}<br>
-                ` : 'No user data'}
-                <hr style="margin: 5px 0; border-color: #333;">
-                <strong>Database Ref:</strong> ${vinsRef ? '✅ Set' : '❌ Not set'}<br>
-                <strong>Timestamp:</strong> ${new Date().toLocaleTimeString()}
-            `;
-            debugDiv.style.display = 'block';
-        }
 
         window.auth = {
             currentUser: null,
@@ -974,14 +953,15 @@ CAT00275CFL12345..."></textarea>
                 const password = document.getElementById('loginPassword').value;
                 const errorDiv = document.getElementById('loginError');
                 const successDiv = document.getElementById('loginSuccess');
-                const debugDiv = document.getElementById('debugInfo');
+                const errorHelp = document.getElementById('errorHelp');
                 const btn = document.getElementById('loginBtn');
                 const spinner = document.getElementById('loginSpinner');
                 const btnText = document.getElementById('loginBtnText');
 
                 errorDiv.textContent = '';
                 successDiv.textContent = '';
-                debugDiv.style.display = 'none';
+                errorHelp.style.display = 'none';
+                errorHelp.innerHTML = '';
 
                 if (!email || !password) {
                     errorDiv.textContent = 'Please enter email and password';
@@ -998,55 +978,74 @@ CAT00275CFL12345..."></textarea>
                     const user = userCredential.user;
                     
                     console.log('Login successful!');
-                    console.log('User:', user.email);
-                    console.log('UID:', user.uid);
-                    console.log('ID Token available');
                     
                     this.userRole = this.userRoles[email] || 'tech';
                     this.currentUser = email;
                     
                     successDiv.textContent = 'Login successful! Loading...';
                     
-                    // Esperar un momento para asegurar que el token esté listo
                     setTimeout(() => {
                         this.showMainInterface();
                     }, 1000);
 
                 } catch (error) {
                     console.error('Login error:', error);
-                    let errorMsg = 'Login failed. ';
                     
-                    switch(error.code) {
-                        case 'auth/invalid-email':
-                            errorMsg += 'Invalid email format.';
-                            break;
-                        case 'auth/user-disabled':
-                            errorMsg += 'Account disabled.';
-                            break;
-                        case 'auth/user-not-found':
-                            errorMsg += 'User not found.';
-                            break;
-                        case 'auth/wrong-password':
-                            errorMsg += 'Incorrect password.';
-                            break;
-                        case 'auth/invalid-credential':
-                            errorMsg += 'Invalid credentials.';
-                            break;
-                        case 'auth/network-request-failed':
-                            errorMsg += 'Network error. Check connection.';
-                            break;
-                        default:
-                            errorMsg += error.message;
+                    let errorMsg = '';
+                    let helpHTML = '';
+                    
+                    if (error.code === 'auth/requests-from-referer-blocked' || 
+                        error.message.includes('referer')) {
+                        
+                        errorMsg = '⚠️ Dominio no autorizado en Firebase';
+                        helpHTML = `
+                            <div class="error-help">
+                                <strong>🚨 Solución requerida:</strong><br><br>
+                                Tu dominio <code>moralesleonidas1973-cloud.github.io</code> debe ser autorizado en Firebase.
+                                <ol>
+                                    <li>Ve a <a href="https://console.firebase.google.com" target="_blank" style="color: #60a5fa;">Firebase Console</a></li>
+                                    <li>Selecciona tu proyecto <code>vin-tracker-f0834</code></li>
+                                    <li>Ve a <strong>Authentication</strong> → <strong>Settings</strong></li>
+                                    <li>En <strong>Authorized domains</strong>, haz clic en <strong>Add domain</strong></li>
+                                    <li>Agrega: <code>moralesleonidas1973-cloud.github.io</code></li>
+                                    <li>Guarda los cambios</li>
+                                    <li>Recarga esta página e intenta de nuevo</li>
+                                </ol>
+                                <br>
+                                <strong>Alternativa temporal:</strong> Si estás en desarrollo, puedes usar localhost o deshabilitar la verificación de dominio en Firebase.
+                            </div>
+                        `;
+                    } else {
+                        switch(error.code) {
+                            case 'auth/invalid-email':
+                                errorMsg = 'Invalid email format.';
+                                break;
+                            case 'auth/user-disabled':
+                                errorMsg = 'Account disabled.';
+                                break;
+                            case 'auth/user-not-found':
+                                errorMsg = 'User not found.';
+                                break;
+                            case 'auth/wrong-password':
+                                errorMsg = 'Incorrect password.';
+                                break;
+                            case 'auth/invalid-credential':
+                                errorMsg = 'Invalid credentials.';
+                                break;
+                            case 'auth/network-request-failed':
+                                errorMsg = 'Network error. Check connection.';
+                                break;
+                            default:
+                                errorMsg = 'Login failed: ' + error.message;
+                        }
                     }
                     
                     errorDiv.textContent = errorMsg;
                     
-                    debugDiv.innerHTML = `
-                        <strong>Error técnico:</strong><br>
-                        Code: ${error.code}<br>
-                        Message: ${error.message}
-                    `;
-                    debugDiv.style.display = 'block';
+                    if (helpHTML) {
+                        errorHelp.innerHTML = helpHTML;
+                        errorHelp.style.display = 'block';
+                    }
                 } finally {
                     btn.disabled = false;
                     spinner.style.display = 'none';
@@ -1058,7 +1057,7 @@ CAT00275CFL12345..."></textarea>
                 if (confirm('Logout?')) {
                     try {
                         await signOut(auth);
-                        vinsRef = null; // Limpiar referencia
+                        vinsRef = null;
                         location.reload();
                     } catch (error) {
                         console.error('Logout error:', error);
@@ -1082,14 +1081,11 @@ CAT00275CFL12345..."></textarea>
                     document.getElementById('techMessage').style.display = 'flex';
                 }
 
-                // Inicializar la app después de asegurar autenticación
                 app.init();
             },
 
             init() {
                 onAuthStateChanged(auth, (user) => {
-                    updateDebug();
-                    
                     if (user) {
                         console.log('Auth state: User is signed in', user.email);
                         this.currentUser = user.email;
@@ -1105,9 +1101,6 @@ CAT00275CFL12345..."></textarea>
                 document.getElementById('loginPassword').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.login();
                 });
-                
-                // Actualizar debug cada 5 segundos
-                setInterval(updateDebug, 5000);
             }
         };
 
@@ -1118,10 +1111,8 @@ CAT00275CFL12345..."></textarea>
             searchTerm: '',
 
             init() {
-                // Crear referencia DESPUÉS de autenticación
                 vinsRef = ref(database, 'vins');
                 console.log('VinsRef initialized:', vinsRef);
-                updateDebug();
                 
                 this.setupRealtimeListener();
                 this.setupConnectionStatus();
@@ -1229,7 +1220,6 @@ CAT00275CFL12345..."></textarea>
                     return;
                 }
                 
-                // Verificar autenticación antes de proceder
                 if (!auth.currentUser) {
                     alert('Error: User not authenticated. Please login again.');
                     return;
@@ -1251,7 +1241,6 @@ CAT00275CFL12345..."></textarea>
 
                 console.log('Processing VINs:', vins);
                 console.log('Current user:', auth.currentUser.email);
-                console.log('User UID:', auth.currentUser.uid);
 
                 const updates = {};
                 
@@ -1276,18 +1265,12 @@ CAT00275CFL12345..."></textarea>
 
                 try {
                     console.log('Sending updates to Firebase...');
-                    console.log('VinsRef:', vinsRef);
-                    console.log('Updates:', updates);
-                    
                     await update(vinsRef, updates);
-                    
                     console.log('✅ Updates sent successfully');
                     textarea.value = '';
                     alert(`✅ Added ${vins.length} VINs`);
                 } catch (error) {
                     console.error('❌ Error adding VINs:', error);
-                    console.error('Error code:', error.code);
-                    console.error('Error message:', error.message);
                     
                     let errorMsg = 'Error adding VINs: ' + error.message;
                     
@@ -1295,7 +1278,7 @@ CAT00275CFL12345..."></textarea>
                         errorMsg += '\n\nEl usuario está autenticado pero no tiene permisos.';
                         errorMsg += '\nEmail: ' + (auth.currentUser?.email || 'N/A');
                         errorMsg += '\nUID: ' + (auth.currentUser?.uid || 'N/A');
-                        errorMsg += '\n\nVerifica que las reglas de seguridad permitan escritura para usuarios autenticados (auth != null).';
+                        errorMsg += '\n\nVerifica las reglas de seguridad en Firebase (RealTime Database → Rules).';
                     }
                     
                     alert(errorMsg);
@@ -1361,7 +1344,6 @@ CAT00275CFL12345..."></textarea>
             },
 
             async handleEdit(key, field, value, oldValue) {
-                // Verificar autenticación
                 if (!auth.currentUser) {
                     alert('Error: Not authenticated');
                     return;
