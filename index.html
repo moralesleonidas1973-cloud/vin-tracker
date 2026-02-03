@@ -4,160 +4,69 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VIN Tracker Pro | Firebase Live</title>
-    
-    <!-- Tailwind CSS for Layout Utilities -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Chart.js, SheetJS, jsPDF -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-        :root {
-            --primary: #6366f1;
-            --secondary: #8b5cf6;
-            --dark-bg: #0f172a;
-            --glass: rgba(255, 255, 255, 0.05);
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 100%);
-            background-attachment: fixed;
-            color: #f8fafc;
-            overflow-x: hidden;
-        }
-
-        /* Glassmorphism Utilities */
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        }
-
-        .glass-input {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
-            transition: all 0.3s ease;
-        }
-        .glass-input:focus {
-            border-color: var(--primary);
-            background: rgba(15, 23, 42, 0.8);
-            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-            outline: none;
-        }
-
-        /* Table Styles */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.02);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Status Badges */
-        .status-pending { color: #f87171; background: rgba(248, 113, 113, 0.1); }
-        .status-inspected { color: #34d399; background: rgba(52, 211, 153, 0.1); }
-        .status-not-found { color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
-
-        /* Animation */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
-        }
-        
-        /* Loader */
-        .loader {
-            border: 3px solid rgba(255,255,255,0.1);
-            border-radius: 50%;
-            border-top: 3px solid var(--primary);
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        :root { --primary: #6366f1; --secondary: #8b5cf6; --dark-bg: #0f172a; --glass: rgba(255, 255, 255, 0.05); }
+        body { font-family: 'Inter', sans-serif; background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 100%); background-attachment: fixed; color: #f8fafc; overflow-x: hidden; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
+        .glass-input { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); color: white; transition: all 0.3s ease; }
+        .glass-input:focus { border-color: var(--primary); background: rgba(15, 23, 42, 0.8); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); outline: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .loader { border: 3px solid rgba(255,255,255,0.1); border-radius: 50%; border-top: 3px solid var(--primary); width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .syncing { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
-
-    <!-- ==================== LOGIN SCREEN ==================== -->
-    <div id="loginView" class="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
+    <!-- LOGIN SCREEN -->
+    <div id="loginView" class="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a]">
         <div class="glass-panel p-8 rounded-2xl w-full max-w-md m-4 relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-            
             <div class="text-center mb-8">
                 <div class="w-16 h-16 bg-indigo-600 rounded-xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/30">
                     <i class="fas fa-truck-monster text-3xl text-white"></i>
                 </div>
                 <h1 class="text-2xl font-bold text-white tracking-tight">VIN Tracker Pro</h1>
-                <p class="text-slate-400 text-sm mt-2">Secure Cloud Database Access</p>
+                <p class="text-slate-400 text-sm mt-2">Firebase Cloud Database</p>
             </div>
-
             <form id="loginForm" onsubmit="event.preventDefault();">
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">User Role</label>
-                        <div class="relative">
-                            <i class="fas fa-user absolute left-3 top-3 text-slate-500"></i>
-                            <select id="loginEmail" class="glass-input w-full pl-10 pr-4 py-2.5 rounded-lg appearance-none cursor-pointer">
-                                <option value="" disabled selected>Select Account...</option>
-                                <option value="manager@cat.com">👑 Manager (Full Access)</option>
-                                <option value="tech@cat.com">🔧 Technician (View/Update)</option>
-                            </select>
-                            <i class="fas fa-chevron-down absolute right-3 top-3 text-slate-500 text-xs pointer-events-none"></i>
-                        </div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Usuario</label>
+                        <select id="loginEmail" class="glass-input w-full px-4 py-2.5 rounded-lg appearance-none cursor-pointer">
+                            <option value="" disabled selected>Seleccionar cuenta...</option>
+                            <option value="manager@cat.com">👑 Manager (Full Access)</option>
+                            <option value="tech@cat.com">🔧 Technician (Update Only)</option>
+                        </select>
                     </div>
-
                     <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Password</label>
-                        <div class="relative">
-                            <i class="fas fa-lock absolute left-3 top-3 text-slate-500"></i>
-                            <input type="password" id="loginPassword" class="glass-input w-full pl-10 pr-4 py-2.5 rounded-lg" placeholder="••••••••">
-                        </div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Contraseña</label>
+                        <input type="password" id="loginPassword" class="glass-input w-full px-4 py-2.5 rounded-lg" placeholder="••••••••">
                     </div>
-
                     <button onclick="app.login()" id="loginBtn" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold py-2.5 rounded-lg transition-all transform hover:scale-[1.02] shadow-lg shadow-indigo-500/25 flex justify-center items-center gap-2">
-                        <span>Access System</span>
+                        <span>Acceder al Sistema</span>
                         <i class="fas fa-arrow-right"></i>
                     </button>
                 </div>
                 <div id="loginError" class="text-red-400 text-sm text-center mt-4 hidden"></div>
             </form>
-            
-            <div class="mt-6 pt-6 border-t border-white/10 text-center">
-                <span class="text-xs text-slate-500 flex items-center justify-center gap-2">
-                    <i class="fas fa-shield-alt text-emerald-500"></i> Firebase Secured Connection
-                </span>
-            </div>
         </div>
     </div>
 
-    <!-- ==================== MAIN APP ==================== -->
+    <!-- MAIN APP -->
     <div id="appView" class="hidden flex-col min-h-screen p-4 md:p-6 max-w-[1600px] mx-auto w-full animate-fade-in">
-        
-        <!-- Header -->
         <header class="glass-panel rounded-xl p-4 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-4">
                 <div class="h-12 w-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
@@ -167,103 +76,84 @@
                     <h1 class="text-xl font-bold text-white flex items-center gap-2">
                         VIN Tracker <span class="bg-indigo-500/20 text-indigo-300 text-[10px] px-2 py-0.5 rounded border border-indigo-500/30">LIVE</span>
                     </h1>
-                    <p class="text-xs text-slate-400">Real-time Synchronization via Firebase</p>
+                    <p class="text-xs text-slate-400">Sincronización en tiempo real</p>
                 </div>
             </div>
-
             <div class="flex items-center gap-4">
+                <div id="syncStatus" class="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    <span class="text-xs text-emerald-400 font-medium">Conectado</span>
+                </div>
                 <div class="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-lg border border-white/10">
-                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                     <div class="flex flex-col">
                         <span id="headerUserName" class="text-sm font-semibold text-white leading-none">User</span>
                         <span id="headerUserRole" class="text-[10px] text-slate-400 uppercase tracking-wide">Role</span>
                     </div>
                 </div>
-                <button onclick="app.logout()" class="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Logout">
+                <button onclick="app.logout()" class="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Cerrar Sesión">
                     <i class="fas fa-power-off"></i>
                 </button>
             </div>
         </header>
 
-        <!-- Stats Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <!-- Total -->
-            <div class="glass-panel p-4 rounded-xl border-l-4 border-indigo-500 relative overflow-hidden group">
-                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <i class="fas fa-database text-6xl text-indigo-400"></i>
-                </div>
-                <p class="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Total Records</p>
+            <div class="glass-panel p-4 rounded-xl border-l-4 border-indigo-500">
+                <p class="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Total Registros</p>
                 <h3 class="text-3xl font-bold text-white" id="statTotal">0</h3>
             </div>
-            <!-- Pending -->
-            <div class="glass-panel p-4 rounded-xl border-l-4 border-red-500 relative overflow-hidden group">
-                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <i class="fas fa-hourglass-half text-6xl text-red-400"></i>
-                </div>
-                <p class="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Pending</p>
+            <div class="glass-panel p-4 rounded-xl border-l-4 border-red-500">
+                <p class="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Pendientes</p>
                 <h3 class="text-3xl font-bold text-white" id="statPending">0</h3>
             </div>
-            <!-- Inspected -->
-            <div class="glass-panel p-4 rounded-xl border-l-4 border-emerald-500 relative overflow-hidden group">
-                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <i class="fas fa-clipboard-check text-6xl text-emerald-400"></i>
-                </div>
-                <p class="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Inspected</p>
+            <div class="glass-panel p-4 rounded-xl border-l-4 border-emerald-500">
+                <p class="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Inspeccionados</p>
                 <h3 class="text-3xl font-bold text-white" id="statInspected">0</h3>
             </div>
-            <!-- Not Found -->
-            <div class="glass-panel p-4 rounded-xl border-l-4 border-amber-500 relative overflow-hidden group">
-                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <i class="fas fa-exclamation-triangle text-6xl text-amber-400"></i>
-                </div>
-                <p class="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Not Found</p>
+            <div class="glass-panel p-4 rounded-xl border-l-4 border-amber-500">
+                <p class="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">No Encontrados</p>
                 <h3 class="text-3xl font-bold text-white" id="statNotFound">0</h3>
             </div>
         </div>
 
-        <!-- Manager Input Section -->
         <div id="managerSection" class="hidden mb-6">
             <div class="glass-panel p-5 rounded-xl">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-white font-semibold flex items-center gap-2">
-                        <i class="fas fa-cloud-upload-alt text-indigo-400"></i> Batch Data Entry
+                        <i class="fas fa-cloud-upload-alt text-indigo-400"></i> Entrada Masiva de VINs
                     </h3>
-                    <span class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded border border-indigo-500/30">Manager Only</span>
+                    <span class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded border border-indigo-500/30">Solo Manager</span>
                 </div>
-                <p class="text-slate-400 text-sm mb-3">Paste VINs below (one per line or comma separated). Serial numbers will be auto-detected.</p>
                 <textarea id="batchVins" class="glass-input w-full h-32 p-3 rounded-lg font-mono text-sm mb-3" placeholder="CAT00275CR8Y05091&#10;CAT00275CKRY05091..."></textarea>
                 <div class="flex gap-3">
                     <button onclick="app.processBatchVins()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                        <i class="fas fa-plus"></i> Add to Database
+                        <i class="fas fa-plus"></i> Agregar a Base de Datos
                     </button>
                     <button onclick="document.getElementById('batchVins').value=''" class="bg-white/5 hover:bg-white/10 text-slate-300 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                        Clear
+                        Limpiar
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Technician Message -->
         <div id="techSection" class="hidden mb-6">
-             <div class="glass-panel p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-start gap-3">
+            <div class="glass-panel p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-start gap-3">
                 <i class="fas fa-info-circle text-amber-400 mt-1"></i>
                 <div>
-                    <h4 class="text-amber-200 font-semibold text-sm">View & Update Mode</h4>
-                    <p class="text-amber-200/70 text-xs mt-1">You can update Status from "Pending" to "Inspected" or "Not Found" and add comments. You cannot add new VINs.</p>
+                    <h4 class="text-amber-200 font-semibold text-sm">Modo Técnico - Actualización Limitada</h4>
+                    <p class="text-amber-200/70 text-xs mt-1">Puedes cambiar el estado de "Pending" a "Inspected" o "Not Found" y agregar comentarios. Los cambios se sincronizan en tiempo real.</p>
                 </div>
-             </div>
+            </div>
         </div>
 
-        <!-- Toolbar -->
         <div class="flex flex-col md:flex-row justify-between gap-4 mb-4">
             <div class="relative flex-1 max-w-md">
                 <i class="fas fa-search absolute left-3 top-3 text-slate-500"></i>
-                <input type="text" id="searchInput" onkeyup="app.handleSearch()" placeholder="Search VIN or Serial..." class="glass-input w-full pl-10 pr-4 py-2.5 rounded-lg text-sm">
+                <input type="text" id="searchInput" onkeyup="app.handleSearch()" placeholder="Buscar VIN o Serial..." class="glass-input w-full pl-10 pr-4 py-2.5 rounded-lg text-sm">
                 <div id="searchStats" class="absolute right-3 top-3 text-xs text-slate-500 hidden"></div>
             </div>
             <div class="flex gap-2">
                 <button onclick="app.generateReport()" class="glass-input hover:bg-white/10 px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors">
-                    <i class="fas fa-chart-pie text-purple-400"></i> Analytics
+                    <i class="fas fa-chart-pie text-purple-400"></i> Reporte
                 </button>
                 <button onclick="app.exportExcel()" class="glass-input hover:bg-white/10 px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors">
                     <i class="fas fa-file-excel text-emerald-400"></i> Excel
@@ -274,29 +164,27 @@
             </div>
         </div>
 
-        <!-- Data Table -->
         <div class="glass-panel rounded-xl overflow-hidden flex-1 flex flex-col min-h-[400px]">
             <div class="overflow-x-auto custom-scrollbar flex-1">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-white/5 text-slate-400 text-xs uppercase tracking-wider border-b border-white/10">
                             <th class="p-4 font-semibold">#</th>
-                            <th class="p-4 font-semibold">VIN Number</th>
-                            <th class="p-4 font-semibold">Serial No.</th>
-                            <th class="p-4 font-semibold">Entry Date</th>
-                            <th class="p-4 font-semibold">Status</th>
-                            <th class="p-4 font-semibold">Technician</th>
-                            <th class="p-4 font-semibold">Last Update</th>
-                            <th class="p-4 font-semibold w-1/4">Comments</th>
+                            <th class="p-4 font-semibold">VIN</th>
+                            <th class="p-4 font-semibold">Serial</th>
+                            <th class="p-4 font-semibold">Fecha Entrada</th>
+                            <th class="p-4 font-semibold">Estado</th>
+                            <th class="p-4 font-semibold">Técnico</th>
+                            <th class="p-4 font-semibold">Última Actualización</th>
+                            <th class="p-4 font-semibold w-1/4">Comentarios</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody" class="text-sm divide-y divide-white/5">
-                        <!-- Rows generated by JS -->
                         <tr>
                             <td colspan="8" class="p-8 text-center text-slate-500">
                                 <div class="flex flex-col items-center gap-2">
                                     <div class="loader mb-2"></div>
-                                    <span>Connecting to Firebase...</span>
+                                    <span>Conectando a Firebase...</span>
                                 </div>
                             </td>
                         </tr>
@@ -304,9 +192,9 @@
                 </table>
             </div>
             <div class="p-3 border-t border-white/10 bg-white/5 text-xs text-slate-500 flex justify-between items-center">
-                <span id="lastUpdate">Waiting for data...</span>
+                <span id="lastUpdate">Esperando datos...</span>
                 <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Live
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Tiempo Real
                 </div>
             </div>
         </div>
@@ -316,35 +204,27 @@
     <div id="reportModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="glass-panel w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl flex flex-col">
             <div class="p-6 border-b border-white/10 flex justify-between items-center sticky top-0 bg-[#1e293b]/95 backdrop-blur z-10">
-                <h2 class="text-xl font-bold text-white">Status Analytics</h2>
+                <h2 class="text-xl font-bold text-white">Análisis de Estado</h2>
                 <button onclick="document.getElementById('reportModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div id="reportContent" class="space-y-4">
-                    <!-- Report details -->
-                </div>
+                <div id="reportContent" class="space-y-4"></div>
                 <div class="h-64 md:h-auto flex items-center justify-center bg-white/5 rounded-xl p-4 border border-white/10">
                     <canvas id="statusChart"></canvas>
                 </div>
             </div>
-            <div class="p-6 border-t border-white/10 bg-white/5 flex justify-end">
-                <button onclick="app.exportReportPDF()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
-                    <i class="fas fa-download"></i> Download PDF
-                </button>
-            </div>
         </div>
     </div>
 
-    <!-- ==================== FIREBASE & LOGIC ==================== -->
-    <!-- Firebase Modular SDK -->
+    <!-- FIREBASE SDK Y LÓGICA -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, set, push, update, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getDatabase, ref, onValue, push, update, remove, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // Firebase Configuration
+        // IMPORTANTE: URL corregida sin espacio al final
         const firebaseConfig = {
             apiKey: "AIzaSyD3uWheIL3CuqF4yAetxLIEt8DMcKY9W98",
             authDomain: "vin-tracker-f0834.firebaseapp.com",
@@ -355,44 +235,40 @@
             appId: "1:949409357299:web:0752144b2db947be1b0686"
         };
 
-        // Initialize Firebase
         const appFb = initializeApp(firebaseConfig);
         const db = getDatabase(appFb);
         const auth = getAuth(appFb);
-        const dbRef = ref(db, 'vins');
+        let dbRef = null;
 
-        // Main Application Logic
+        // Configuración local de usuarios (simulando directorio corporativo)
+        const USER_CONFIG = {
+            'manager@cat.com': { password: 'admin123', role: 'manager', name: 'Manager' },
+            'tech@cat.com': { password: 'tech123', role: 'tech', name: 'Technician' }
+        };
+
         const app = {
             data: [],
             filteredData: [],
             currentUser: null,
-            userRole: null, // 'manager' or 'tech'
+            userRole: null,
+            userName: null,
             chart: null,
-            
-            // Hardcoded Local Credentials (Simulating a company directory)
-            // In production, you would use Firebase Auth users directly.
-            credentials: {
-                'manager@cat.com': { password: 'admin123', role: 'manager' },
-                'tech@cat.com': { password: 'tech123', role: 'tech' }
-            },
+            unsubscribe: null,
 
             init() {
-                // Check Firebase Auth state
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        // User is signed in.
-                        // Note: In a real app, you would fetch the role from Firestore/RTDB here.
-                        // We are simulating role persistence via local logic for this demo.
+                        // Usuario autenticado en Firebase
+                        console.log("Firebase Auth: Usuario autenticado", user.uid);
                         const savedSession = JSON.parse(localStorage.getItem('vin_tracker_session'));
                         if(savedSession) {
                             this.currentUser = savedSession.email;
                             this.userRole = savedSession.role;
+                            this.userName = savedSession.name;
                             this.showMainInterface();
-                        } else {
-                            this.logout();
                         }
                     } else {
-                        // User is signed out.
+                        // No autenticado
                         document.getElementById('loginView').classList.remove('hidden');
                         document.getElementById('appView').classList.add('hidden');
                         document.getElementById('appView').classList.remove('flex');
@@ -400,78 +276,60 @@
                 });
             },
 
-            login() {
+            async login() {
                 const email = document.getElementById('loginEmail').value;
                 const password = document.getElementById('loginPassword').value;
                 const errorDiv = document.getElementById('loginError');
                 const btn = document.getElementById('loginBtn');
                 
                 errorDiv.classList.add('hidden');
-                
+
                 if (!email || !password) {
-                    errorDiv.textContent = 'Please enter credentials';
+                    errorDiv.textContent = 'Ingresa credenciales';
                     errorDiv.classList.remove('hidden');
                     return;
                 }
 
-                // 1. Check Local Logic (Simulation)
-                const userInfo = this.credentials[email];
-                if (!userInfo || userInfo.password !== password) {
-                    errorDiv.textContent = 'Invalid credentials';
+                const userConfig = USER_CONFIG[email];
+                if (!userConfig || userConfig.password !== password) {
+                    errorDiv.textContent = 'Credenciales inválidas';
                     errorDiv.classList.remove('hidden');
                     return;
                 }
 
-                // 2. Authenticate with Firebase (Simulated Anonymous or Real)
-                // For this demo, we use a generic sign in or anonymous. 
-                // Ideally, you create users in Firebase Auth console.
-                // Here we just trigger the state change.
-                btn.innerHTML = '<div class="loader border-white/30 border-t-white w-5 h-5"></div> Connecting...';
-                
-                // Sign in anonymously to Firebase to get a token for RTDB
-                signInWithEmailAndPassword(auth, email, password)
-                    .then((userCredential) => {
-                        // Signed in 
-                        this.currentUser = email;
-                        this.userRole = userInfo.role;
-                        localStorage.setItem('vin_tracker_session', JSON.stringify({
-                            email: email,
-                            role: this.userRole
-                        }));
-                        this.showMainInterface();
-                    })
-                    .catch((error) => {
-                        // If Firebase Auth fails (user not created in console), simulate success for demo
-                        // In a real app, you would create the user in Firebase Console first.
-                        console.warn("Firebase Auth Error (Expected if users not in console):", error);
-                        
-                        // Fallback for demo purposes if Firebase Auth isn't set up with these specific emails
-                        // We simulate the login UI change but warn in console.
-                        if(error.code === 'auth/user-not-found') {
-                             alert("Demo Mode: User not found in Firebase Console. Please create user or use local simulation.");
-                             // Forcing local simulation for the sake of the functional demo:
-                             this.currentUser = email;
-                             this.userRole = userInfo.role;
-                             localStorage.setItem('vin_tracker_session', JSON.stringify({
-                                email: email,
-                                role: this.userRole
-                             }));
-                             this.showMainInterface();
-                        } else {
-                            errorDiv.textContent = error.message;
-                            errorDiv.classList.remove('hidden');
-                            btn.innerHTML = '<span>Access System</span><i class="fas fa-arrow-right"></i>';
-                        }
-                    });
+                btn.innerHTML = '<div class="loader border-white/30 border-t-white w-5 h-5"></div> Conectando...';
+
+                try {
+                    // PASO CRÍTICO: Autenticación anónima en Firebase
+                    // Esto permite que las reglas "auth != null" funcionen
+                    await signInAnonymously(auth);
+                    
+                    this.currentUser = email;
+                    this.userRole = userConfig.role;
+                    this.userName = userConfig.name;
+                    
+                    localStorage.setItem('vin_tracker_session', JSON.stringify({
+                        email: email,
+                        role: this.userRole,
+                        name: this.userName
+                    }));
+
+                } catch (error) {
+                    console.error("Error de autenticación:", error);
+                    errorDiv.textContent = 'Error de conexión con Firebase: ' + error.message;
+                    errorDiv.classList.remove('hidden');
+                    btn.innerHTML = '<span>Acceder al Sistema</span><i class="fas fa-arrow-right"></i>';
+                }
             },
 
             logout() {
-                signOut(auth).then(() => {
-                    localStorage.removeItem('vin_tracker_session');
-                    location.reload();
-                }).catch((error) => {
-                    console.error(error);
-                });
+                if(confirm('¿Cerrar sesión?')) {
+                    signOut(auth).then(() => {
+                        localStorage.removeItem('vin_tracker_session');
+                        if(this.unsubscribe) this.unsubscribe();
+                        location.reload();
+                    });
+                }
             },
 
             showMainInterface() {
@@ -480,11 +338,9 @@
                 appView.classList.remove('hidden');
                 appView.classList.add('flex');
                 
-                // Header Info
-                document.getElementById('headerUserName').textContent = this.currentUser;
+                document.getElementById('headerUserName').textContent = this.userName || this.currentUser;
                 document.getElementById('headerUserRole').textContent = this.userRole;
-                
-                // Role UI
+
                 if (this.userRole === 'manager') {
                     document.getElementById('managerSection').classList.remove('hidden');
                     document.getElementById('techSection').classList.add('hidden');
@@ -493,34 +349,61 @@
                     document.getElementById('techSection').classList.remove('hidden');
                 }
 
-                // Start Firebase Listener
                 this.listenToData();
             },
 
             listenToData() {
-                onValue(dbRef, (snapshot) => {
+                dbRef = ref(db, 'vins');
+                this.unsubscribe = onValue(dbRef, (snapshot) => {
                     const data = snapshot.val();
                     this.data = [];
+                    
                     if (data) {
-                        // Convert Firebase object to Array
                         Object.keys(data).forEach(key => {
                             this.data.push({
-                                firebaseId: key, // Store the key to update later
+                                firebaseId: key,
                                 ...data[key]
                             });
                         });
-                        // Sort by date descending
-                        this.data.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+                        // Ordenar por fecha de entrada descendente
+                        this.data.sort((a, b) => {
+                            const dateA = a.timestamp || 0;
+                            const dateB = b.timestamp || 0;
+                            return dateB - dateA;
+                        });
                     }
+                    
                     this.filteredData = [...this.data];
                     this.render();
+                    
+                    // Actualizar indicador de sincronización
+                    const syncStatus = document.getElementById('syncStatus');
+                    syncStatus.innerHTML = `
+                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                        <span class="text-xs text-emerald-400 font-medium">Sincronizado</span>
+                    `;
+                    setTimeout(() => {
+                        syncStatus.innerHTML = `
+                            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                            <span class="text-xs text-emerald-400 font-medium">Conectado</span>
+                        `;
+                    }, 2000);
+                    
+                }, (error) => {
+                    console.error("Error de Firebase:", error);
+                    document.getElementById('syncStatus').innerHTML = `
+                        <div class="w-2 h-2 rounded-full bg-red-500"></div>
+                        <span class="text-xs text-red-400 font-medium">Error de conexión</span>
+                    `;
                 });
             },
 
             render() {
                 this.updateStats();
                 this.renderTable();
-                document.getElementById('lastUpdate').textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+                const now = new Date();
+                document.getElementById('lastUpdate').textContent = 
+                    `Actualizado: ${now.toLocaleTimeString()}`;
             },
 
             updateStats() {
@@ -540,57 +423,74 @@
                 tbody.innerHTML = '';
 
                 if (this.filteredData.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-500">No records found</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-500">No hay registros</td></tr>`;
                     return;
                 }
 
                 this.filteredData.forEach((row, index) => {
                     const tr = document.createElement('tr');
-                    tr.className = "hover:bg-white/5 transition-colors border-b border-white/5 group";
+                    tr.className = "hover:bg-white/5 transition-colors border-b border-white/5";
                     
                     const isManager = this.userRole === 'manager';
                     const isPending = row.status === 'Pending';
-                    
-                    // Cell Styles
-                    const inputBase = "bg-transparent border border-transparent focus:border-indigo-500 rounded px-2 py-1 w-full text-slate-300 focus:text-white focus:outline-none transition-all";
-                    const readonlyStyle = "text-slate-500 cursor-not-allowed";
-                    
-                    // Status Badge Logic
-                    let statusBadge = '';
-                    if(row.status === 'Pending') statusBadge = '<span class="px-2 py-1 rounded text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">PENDING</span>';
-                    else if(row.status === 'Inspected') statusBadge = '<span class="px-2 py-1 rounded text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">INSPECTED</span>';
-                    else if(row.status === 'Not Found') statusBadge = '<span class="px-2 py-1 rounded text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">NOT FOUND</span>';
-
-                    // Controls
-                    // Manager can edit anything. Tech can only edit Pending status and comments.
                     const canEditStatus = isManager || isPending;
-                    const canEditComment = true; // Both can comment
                     
-                    // Status Select Options
-                    const statusOptions = ['Pending', 'Inspected', 'Not Found'].map(s => 
-                        `<option value="${s}" ${row.status === s ? 'selected' : ''}>${s}</option>`
-                    ).join('');
+                    // Formatear fecha de última actualización
+                    let lastUpdateStr = '-';
+                    if (row.lastUpdate) {
+                        const date = new Date(row.lastUpdate);
+                        lastUpdateStr = date.toLocaleString('es-ES', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                    }
+
+                    // Select de estado
+                    let statusSelect = '';
+                    if (isManager) {
+                        statusSelect = `
+                            <select onchange="app.updateStatus('${row.firebaseId}', this.value)" 
+                                    class="bg-slate-800/50 border border-white/10 rounded px-2 py-1 text-xs text-white focus:border-indigo-500 outline-none cursor-pointer">
+                                <option value="Pending" ${row.status === 'Pending' ? 'selected' : ''}>Pendiente</option>
+                                <option value="Inspected" ${row.status === 'Inspected' ? 'selected' : ''}>Inspeccionado</option>
+                                <option value="Not Found" ${row.status === 'Not Found' ? 'selected' : ''}>No Encontrado</option>
+                            </select>
+                        `;
+                    } else if (isPending) {
+                        // Técnico solo puede cambiar si está Pending
+                        statusSelect = `
+                            <select onchange="app.updateStatus('${row.firebaseId}', this.value)" 
+                                    class="bg-slate-800/50 border border-white/10 rounded px-2 py-1 text-xs text-white focus:border-indigo-500 outline-none cursor-pointer">
+                                <option value="Pending" selected>Pendiente</option>
+                                <option value="Inspected">Inspeccionado</option>
+                                <option value="Not Found">No Encontrado</option>
+                            </select>
+                        `;
+                    } else {
+                        // Solo mostrar badge
+                        const badgeClass = row.status === 'Pending' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                         row.status === 'Inspected' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                                         'bg-amber-500/20 text-amber-400 border-amber-500/30';
+                        statusSelect = `<span class="px-2 py-1 rounded text-xs border ${badgeClass}">${row.status}</span>`;
+                    }
 
                     tr.innerHTML = `
                         <td class="p-4 text-slate-500 text-xs">${index + 1}</td>
-                        <td class="p-4 font-mono text-indigo-300">${row.vin || ''}</td>
-                        <td class="p-4 font-mono text-xs text-slate-400">${row.serialNumber || ''}</td>
-                        <td class="p-4 text-slate-400 text-xs">${row.entryDate || ''}</td>
-                        <td class="p-4">
-                            ${isManager ? 
-                                `<select onchange="app.updateStatus('${row.firebaseId}', this.value)" class="${inputBase} bg-slate-800/50 cursor-pointer">${statusOptions}</select>` : 
-                                statusBadge
-                            }
-                        </td>
+                        <td class="p-4 font-mono text-indigo-300 text-xs">${row.vin || ''}</td>
+                        <td class="p-4 font-mono text-xs text-slate-400">${row.serialNumber || '-'}</td>
+                        <td class="p-4 text-slate-400 text-xs">${row.entryDate || '-'}</td>
+                        <td class="p-4">${statusSelect}</td>
                         <td class="p-4 text-xs text-slate-400">${row.assignedTech || '-'}</td>
-                        <td class="p-4 text-xs text-slate-500">${row.lastUpdate ? new Date(row.lastUpdate).toLocaleDateString() : '-'}</td>
+                        <td class="p-4 text-xs text-slate-500">${lastUpdateStr}</td>
                         <td class="p-4">
                             <input type="text" 
                                 value="${row.comments || ''}" 
                                 onchange="app.updateComment('${row.firebaseId}', this.value)"
-                                placeholder="Add notes..."
-                                class="${inputBase} text-xs ${!canEditComment ? readonlyStyle : ''}" 
-                                ${!canEditComment ? 'readonly' : ''}
+                                placeholder="Agregar nota..."
+                                class="bg-transparent border border-transparent focus:border-indigo-500 rounded px-2 py-1 w-full text-xs text-slate-300 focus:text-white focus:outline-none transition-all"
                             >
                         </td>
                     `;
@@ -610,110 +510,137 @@
                         (row.vin && row.vin.toLowerCase().includes(term)) || 
                         (row.serialNumber && row.serialNumber.toLowerCase().includes(term))
                     );
-                    stats.textContent = `${this.filteredData.length} results`;
+                    stats.textContent = `${this.filteredData.length} resultados`;
                     stats.classList.remove('hidden');
                 }
                 this.renderTable();
             },
 
-            // Firebase Operations
-            processBatchVins() {
-                if (this.userRole !== 'manager') return alert("Access Denied");
-                
+            // OPERACIONES FIREBASE
+            async processBatchVins() {
+                if (this.userRole !== 'manager') return alert("Acceso denegado");
+
                 const textarea = document.getElementById('batchVins');
                 const text = textarea.value.trim();
                 if (!text) return;
 
-                const vins = text.split(/[\n,\s\t]+/).map(v => v.trim().toUpperCase()).filter(v => v.length > 5);
+                const vins = text.split(/[\n,\s\t]+/)
+                    .map(v => v.trim().toUpperCase())
+                    .filter(v => v.length > 5);
+
                 if (vins.length === 0) return;
 
                 const entryDate = new Date().toISOString().split('T')[0];
                 const timestamp = Date.now();
 
-                vins.forEach(vin => {
-                    // Extract Serial Number logic
-                    const serialMatch = vin.match(/(FL|R8|ZE|KR|2X|P9).*$/i);
-                    const serialNumber = serialMatch ? serialMatch[0] : 'N/A';
+                try {
+                    for (const vin of vins) {
+                        const serialMatch = vin.match(/(FL|R8|ZE|KR|2X|P9).*$/i);
+                        const serialNumber = serialMatch ? serialMatch[0] : 'N/A';
 
-                    // Push to Firebase
-                    const newEntryRef = push(dbRef);
-                    set(newEntryRef, {
-                        vin: vin,
-                        serialNumber: serialNumber,
-                        entryDate: entryDate,
-                        status: 'Pending',
-                        assignedTech: '',
-                        lastUpdate: null,
-                        comments: '',
-                        timestamp: timestamp
-                    });
-                });
-
-                textarea.value = '';
-                alert(`Successfully added ${vins.length} records to Firebase`);
-            },
-
-            updateStatus(id, newStatus) {
-                const row = this.data.find(r => r.firebaseId === id);
-                if (!row) return;
-
-                // Logic: If changing FROM Pending, lock it and assign tech
-                // Only Manager can change from Inspected/Not Found back to Pending
-                if (row.status === 'Pending' && newStatus !== 'Pending') {
-                    update(ref(db, 'vins/' + id), {
-                        status: newStatus,
-                        assignedTech: this.currentUser,
-                        lastUpdate: new Date().toISOString()
-                    });
-                } else if (this.userRole === 'manager') {
-                    // Manager can do anything
-                    update(ref(db, 'vins/' + id), {
-                        status: newStatus,
-                        lastUpdate: new Date().toISOString()
-                    });
-                } else {
-                    alert("You can only update status from 'Pending'.");
-                    this.renderTable(); // Reset UI
+                        await push(dbRef, {
+                            vin: vin,
+                            serialNumber: serialNumber,
+                            entryDate: entryDate,
+                            status: 'Pending',
+                            assignedTech: '',
+                            lastUpdate: null,
+                            comments: '',
+                            timestamp: timestamp
+                        });
+                    }
+                    textarea.value = '';
+                    alert(`✅ ${vins.length} VINs agregados correctamente`);
+                } catch (error) {
+                    console.error("Error al agregar:", error);
+                    alert("Error al agregar VINs: " + error.message);
                 }
             },
 
-            updateComment(id, comment) {
-                // Both can comment, but let's log who did it? 
-                // For now, just update comment.
-                update(ref(db, 'vins/' + id), {
-                    comments: comment,
-                    lastUpdate: new Date().toISOString() // Updating timestamp on comment too
-                });
+            async updateStatus(id, newStatus) {
+                const row = this.data.find(r => r.firebaseId === id);
+                if (!row) return;
+
+                // Validaciones de permisos
+                if (this.userRole === 'tech' && row.status !== 'Pending') {
+                    alert("Solo puedes modificar registros Pendientes");
+                    this.renderTable(); // Reset UI
+                    return;
+                }
+
+                const updates = {
+                    status: newStatus,
+                    lastUpdate: new Date().toISOString() // FECHA CORREGIDA AQUÍ
+                };
+
+                // Si cambia de Pending a otro estado, asignar técnico
+                if (row.status === 'Pending' && newStatus !== 'Pending') {
+                    updates.assignedTech = this.userName || this.currentUser;
+                }
+
+                // Si el manager cambia de vuelta a Pending, limpiar técnico
+                if (this.userRole === 'manager' && newStatus === 'Pending') {
+                    updates.assignedTech = '';
+                }
+
+                try {
+                    await update(ref(db, 'vins/' + id), updates);
+                    console.log("Estado actualizado correctamente");
+                } catch (error) {
+                    console.error("Error al actualizar:", error);
+                    alert("Error al actualizar: " + error.message);
+                    this.renderTable();
+                }
             },
 
-            // Exports
+            async updateComment(id, comment) {
+                try {
+                    await update(ref(db, 'vins/' + id), {
+                        comments: comment,
+                        lastUpdate: new Date().toISOString()
+                    });
+                } catch (error) {
+                    console.error("Error al actualizar comentario:", error);
+                }
+            },
+
+            // EXPORTACIONES
             exportExcel() {
-                if (this.data.length === 0) return alert('No data');
+                if (this.data.length === 0) return alert('No hay datos');
                 const exportData = this.data.map(r => ({
-                    'VIN': r.vin, 'Serial_Number': r.serialNumber, 'Entry_Date': r.entryDate,
-                    'Status': r.status, 'Assigned_Tech': r.assignedTech,
-                    'Last_Update': r.lastUpdate ? new Date(r.lastUpdate).toLocaleString() : '',
-                    'Comments': r.comments
+                    'VIN': r.vin,
+                    'Serial': r.serialNumber,
+                    'Fecha_Entrada': r.entryDate,
+                    'Estado': r.status,
+                    'Tecnico': r.assignedTech,
+                    'Ultima_Actualizacion': r.lastUpdate ? new Date(r.lastUpdate).toLocaleString() : '',
+                    'Comentarios': r.comments
                 }));
                 const wb = XLSX.utils.book_new();
                 const ws = XLSX.utils.json_to_sheet(exportData);
-                ws['!cols'] = [{wch: 20}, {wch: 15}, {wch: 12}, {wch: 12}, {wch: 25}, {wch: 20}, {wch: 30}];
-                XLSX.utils.book_append_sheet(wb, ws, "VIN_Data");
+                XLSX.utils.book_append_sheet(wb, ws, "VINs");
                 XLSX.writeFile(wb, `VIN_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
             },
 
             exportPDF() {
-                if (this.data.length === 0) return alert('No data');
+                if (this.data.length === 0) return alert('No hay datos');
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF('l', 'mm', 'a4');
-                doc.setFontSize(20);
                 doc.text('VIN Tracker Report', 14, 20);
                 doc.setFontSize(10);
-                doc.text(`Generated: ${new Date().toLocaleString()} | User: ${this.currentUser}`, 14, 30);
+                doc.text(`Generado: ${new Date().toLocaleString()} | Usuario: ${this.currentUser}`, 14, 30);
                 
                 doc.autoTable({
-                    head: [['VIN', 'Serial Number', 'Date', 'Status', 'Tech', 'Updated', 'Comments']],
-                    body: this.data.map(r => [r.vin, r.serialNumber, r.entryDate, r.status, r.assignedTech, r.lastUpdate ? new Date(r.lastUpdate).toLocaleDateString() : '', r.comments]),
+                    head: [['VIN', 'Serial', 'Fecha', 'Estado', 'Técnico', 'Actualizado', 'Comentarios']],
+                    body: this.data.map(r => [
+                        r.vin, 
+                        r.serialNumber, 
+                        r.entryDate, 
+                        r.status, 
+                        r.assignedTech || '-', 
+                        r.lastUpdate ? new Date(r.lastUpdate).toLocaleDateString() : '-', 
+                        r.comments
+                    ]),
                     startY: 40,
                     styles: { fontSize: 9 },
                     headStyles: { fillColor: [99, 102, 241] }
@@ -726,7 +653,6 @@
                 this.data.forEach(row => {
                     if (grupos[row.status]) grupos[row.status].push(row);
                 });
-
                 this.renderReportModal(grupos);
                 document.getElementById('reportModal').classList.remove('hidden');
             },
@@ -734,16 +660,19 @@
             renderReportModal(grupos) {
                 const container = document.getElementById('reportContent');
                 const orden = ["Inspected", "Pending", "Not Found"];
+                const colores = {
+                    'Inspected': 'text-emerald-400',
+                    'Pending': 'text-red-400',
+                    'Not Found': 'text-amber-400'
+                };
                 
                 let html = '';
                 orden.forEach(status => {
                     const items = grupos[status];
-                    const color = status === 'Pending' ? 'text-red-400' : (status === 'Inspected' ? 'text-emerald-400' : 'text-amber-400');
-                    
                     html += `
                         <div class="bg-white/5 rounded-lg p-4 border border-white/10">
-                            <h4 class="font-bold mb-2 ${color} flex justify-between">
-                                <span>${status}</span>
+                            <h4 class="font-bold mb-2 ${colores[status]} flex justify-between">
+                                <span>${status === 'Inspected' ? 'Inspeccionados' : status === 'Pending' ? 'Pendientes' : 'No Encontrados'}</span>
                                 <span class="bg-white/10 px-2 rounded text-xs py-1">${items.length}</span>
                             </h4>
                             <ul class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pr-2">
@@ -752,7 +681,7 @@
                                         <span>${i.vin}</span>
                                         <span class="font-mono text-slate-600">${i.serialNumber}</span>
                                     </li>
-                                `).join('') : '<li class="text-xs text-slate-600 italic">None</li>'}
+                                `).join('') : '<li class="text-xs text-slate-600 italic">Ninguno</li>'}
                             </ul>
                         </div>
                     `;
@@ -768,12 +697,11 @@
                 this.chart = new Chart(ctx, {
                     type: 'doughnut',
                     data: {
-                        labels: ['Inspected', 'Pending', 'Not Found'],
+                        labels: ['Inspeccionados', 'Pendientes', 'No Encontrados'],
                         datasets: [{
                             data: [grupos['Inspected'].length, grupos['Pending'].length, grupos['Not Found'].length],
                             backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
-                            borderWidth: 0,
-                            hoverOffset: 4
+                            borderWidth: 0
                         }]
                     },
                     options: {
@@ -785,17 +713,11 @@
                         cutout: '70%'
                     }
                 });
-            },
-            
-            exportReportPDF() {
-                // Simplified reuse of exportPDF for the report view
-                this.exportPDF(); 
-                document.getElementById('reportModal').classList.add('hidden');
             }
         };
 
-        // Initialize
-        window.app = app; // Expose to window for HTML onclick events
+        // Exponer a window para eventos HTML
+        window.app = app;
         app.init();
     </script>
 </body>
