@@ -3,647 +3,348 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIN Tracker Pro</title>
+    <title>VIN Tracker Pro | Firebase Live</title>
+    
+    <!-- Tailwind CSS for Layout Utilities -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js, SheetJS, jsPDF -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --primary: #6366f1;
+            --secondary: #8b5cf6;
+            --dark-bg: #0f172a;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
         body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 100%);
             background-attachment: fixed;
-            color: #f1f5f9;
-            line-height: 1.5;
-            min-height: 100vh;
+            color: #f8fafc;
+            overflow-x: hidden;
         }
 
-        .login-screen {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: radial-gradient(circle at center, rgba(99,102,241,0.2) 0%, transparent 70%);
-        }
-        
-        .glass-card {
-            background: rgba(255,255,255,0.08);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-            max-width: 400px;
-            width: 90%;
-            padding: 40px;
-            margin: 20px;
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
 
-        .login-header { text-align: center; margin-bottom: 32px; }
-        
-        .logo {
-            width: 240px;
-            height: 140px;
-            margin: 0 auto 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            border-radius: 12px;
-            background: transparent;
+        .glass-input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
         }
-        
-        .logo img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            display: block;
+        .glass-input:focus {
+            border-color: var(--primary);
+            background: rgba(15, 23, 42, 0.8);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+            outline: none;
         }
 
-        .input-group { margin-bottom: 20px; }
-        .input-group label { display: block; margin-bottom: 8px; color: #94a3b8; font-size: 14px; font-weight: 500; }
-        .modern-input {
-            width: 100%; padding: 12px 16px;
-            background: rgba(15,23,42,0.6);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 10px; color: white; font-size: 15px;
-        }
-        .modern-input:focus { outline: none; border-color: #6366f1; }
-
-        .btn {
-            padding: 12px 24px; border: none; border-radius: 10px;
-            font-size: 14px; font-weight: 600; cursor: pointer;
-            display: inline-flex; align-items: center; gap: 8px;
-            transition: all 0.2s;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            color: white; width: 100%; justify-content: center;
-            box-shadow: 0 4px 15px rgba(99,102,241,0.4);
-        }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,0.6); }
-
-        .error-message { color: #ef4444; margin-top: 12px; text-align: center; font-size: 14px; }
-
-        .app-container { max-width: 1400px; margin: 0 auto; padding: 24px; display: none; }
-        
-        .modern-header {
-            display: flex; justify-content: space-between; align-items: center;
-            background: rgba(30,41,59,0.8);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 16px; padding: 16px 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-        
-        .header-left { display: flex; align-items: center; gap: 16px; }
-        .brand-logo {
-            width: 48px; height: 48px;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            border-radius: 12px; display: flex; align-items: center; justify-content: center;
-            font-size: 24px; color: white;
-            box-shadow: 0 0 20px rgba(99,102,241,0.4);
-        }
-        
-        .brand-text { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-        .brand-text h1 { font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: white; }
-        .pro-badge {
-            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-            padding: 4px 10px; border-radius: 20px;
-            font-size: 11px; font-weight: 700; color: white;
-        }
-        .header-separator { color: #475569; font-size: 20px; }
-        .header-subtitle { color: #94a3b8; font-size: 14px; font-weight: 500; }
-
-        .session-info {
-            display: flex; align-items: center; gap: 12px;
-            background: rgba(255,255,255,0.05);
-            padding: 8px 16px; border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .avatar-icon { font-size: 28px; color: #6366f1; }
-        .user-text { display: flex; flex-direction: column; line-height: 1.3; }
-        .user-name { font-weight: 600; font-size: 14px; color: white; }
-        .role-tag { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
-        
-        .btn-logout {
-            width: 36px; height: 36px; border-radius: 10px;
-            border: none; background: rgba(239,68,68,0.2);
-            color: #f87171; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s;
-        }
-        .btn-logout:hover { background: #ef4444; color: white; }
-
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-        
-        @media (max-width: 1024px) {
-            .stats-row { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 640px) {
-            .stats-row { grid-template-columns: 1fr; }
-            .brand-text { flex-direction: column; align-items: center; gap: 4px; }
-            .header-separator { display: none; }
-        }
-
-        .stat-card {
-            background: rgba(30,41,59,0.8);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 16px;
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            transition: all 0.3s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-        .stat-card:hover { 
-            transform: translateY(-4px); 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-        }
-
-        .stat-icon-box {
-            width: 60px; height: 60px; border-radius: 16px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 28px; flex-shrink: 0;
-        }
-        
-        .stat-pending .stat-icon-box {
-            background: linear-gradient(135deg, rgba(239,68,68,0.3) 0%, rgba(239,68,68,0.1) 100%);
-            color: #f87171;
-            box-shadow: 0 0 30px rgba(239,68,68,0.4);
-            border: 1px solid rgba(239,68,68,0.3);
-        }
-        .stat-inspected .stat-icon-box {
-            background: linear-gradient(135deg, rgba(16,185,129,0.3) 0%, rgba(16,185,129,0.1) 100%);
-            color: #34d399;
-            box-shadow: 0 0 30px rgba(16,185,129,0.4);
-            border: 1px solid rgba(16,185,129,0.3);
-        }
-        .stat-notfound .stat-icon-box {
-            background: linear-gradient(135deg, rgba(245,158,11,0.3) 0%, rgba(245,158,11,0.1) 100%);
-            color: #fbbf24;
-            box-shadow: 0 0 30px rgba(245,158,11,0.4);
-            border: 1px solid rgba(245,158,11,0.3);
-        }
-        .stat-total .stat-icon-box {
-            background: linear-gradient(135deg, rgba(99,102,241,0.3) 0%, rgba(99,102,241,0.1) 100%);
-            color: #a5b4fc;
-            box-shadow: 0 0 30px rgba(99,102,241,0.4);
-            border: 1px solid rgba(99,102,241,0.3);
-        }
-
-        .stat-info { display: flex; flex-direction: column; }
-        .stat-number { font-size: 32px; font-weight: 800; line-height: 1; color: white; }
-        .stat-label { font-size: 14px; color: #94a3b8; margin-top: 4px; font-weight: 500; }
-
-        .input-panel {
-            background: linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.05) 100%);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 16px; padding: 24px; margin-bottom: 24px;
-        }
-        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .panel-header h3 { font-size: 18px; color: white; display: flex; align-items: center; gap: 10px; }
-        .badge-manager {
-            background: rgba(99,102,241,0.2); color: #a5b4fc;
-            padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
-        }
-        .panel-desc { color: #94a3b8; margin-bottom: 16px; font-size: 14px; }
-        
-        textarea {
-            width: 100%; min-height: 100px; padding: 16px;
-            background: rgba(15,23,42,0.5);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 10px; color: white;
-            font-family: 'Courier New', monospace; font-size: 14px;
-            margin-bottom: 16px; resize: vertical;
-        }
-        textarea:focus { outline: none; border-color: #6366f1; }
-
-        .input-actions { display: flex; gap: 12px; flex-wrap: wrap; }
-        .btn-secondary { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }
-        .btn-danger { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
-        .btn-success { background: rgba(16,185,129,0.2); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
-        .btn-accent { background: rgba(139,92,246,0.2); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); }
-
-        .alert-box {
-            display: flex; align-items: center; gap: 16px;
-            background: rgba(59,130,246,0.1);
-            border: 1px solid rgba(59,130,246,0.2);
-            border-radius: 12px; padding: 20px; margin-bottom: 24px;
-        }
-        .alert-box i { font-size: 24px; color: #60a5fa; }
-        .alert-box strong { color: white; }
-
-        .toolbar {
-            display: flex; justify-content: space-between; align-items: center;
-            gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
-        }
-        .search-box {
-            position: relative; flex: 1; max-width: 400px; min-width: 280px;
-        }
-        .search-icon {
-            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-            color: #94a3b8; font-size: 16px;
-        }
-        .search-input {
-            width: 100%; padding: 12px 40px 12px 42px;
-            background: rgba(30,41,59,0.8);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 12px; color: white; font-size: 15px;
-        }
-        .search-input:focus { outline: none; border-color: #6366f1; }
-        .search-clear {
-            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-            background: rgba(255,255,255,0.1); border: none; color: #94a3b8;
-            width: 24px; height: 24px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer;
-        }
-        .search-results { color: #94a3b8; font-size: 14px; margin-left: 12px; }
-        .action-buttons { display: flex; gap: 10px; }
-
-        .table-wrap {
-            background: rgba(30,41,59,0.8);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 16px; overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        thead { background: rgba(99,102,241,0.1); }
-        th {
-            padding: 14px 16px; text-align: left; font-weight: 600;
-            color: #a5b4fc; font-size: 12px; text-transform: uppercase;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #f1f5f9; }
-        tr:hover { background: rgba(255,255,255,0.03); }
-        tr.status-pending { background: rgba(239,68,68,0.08); }
-        tr.status-inspected { background: rgba(16,185,129,0.08); }
-        tr.status-not-found { background: rgba(245,158,11,0.08); }
-        
-        .input-cell {
-            width: 100%; background: transparent; border: 1px solid transparent;
-            padding: 8px; color: white; border-radius: 6px; font-family: inherit;
-        }
-        .input-cell:focus { outline: none; background: rgba(255,255,255,0.1); border-color: #6366f1; }
-        
-        select.input-cell {
-            background-color: #1e293b !important;
-            color: #f1f5f9 !important;
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg ' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f1f5f9' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            padding-right: 36px;
-            border: 1px solid rgba(255,255,255,0.2);
-            cursor: pointer; font-weight: 600;
-        }
-
-        select.input-cell option {
-            background-color: #0f172a !important;
-            color: #f1f5f9 !important;
-            padding: 12px; font-size: 14px; font-weight: 500;
-        }
-        select.input-cell option[value="Pending"] {
-            background-color: #450a0a !important;
-            color: #fca5a5 !important;
-        }
-        select.input-cell option[value="Inspected"] {
-            background-color: #064e3b !important;
-            color: #6ee7b7 !important;
-        }
-        select.input-cell option[value="Not Found"] {
-            background-color: #451a03 !important;
-            color: #fcd34d !important;
-        }
-        select.input-cell option:hover,
-        select.input-cell option:focus,
-        select.input-cell option:checked {
-            background-color: #334155 !important;
-            color: white !important;
-        }
-        select.input-cell:disabled {
-            background-color: #1e293b !important;
-            color: #64748b !important;
-            opacity: 0.7;
-            cursor: not-allowed;
-            background-image: none;
-        }
-
-        .empty-state { text-align: center; padding: 60px; color: #64748b; }
-        .empty-state i { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
-
-        .footer-bar {
-            text-align: center; margin-top: 20px; color: #64748b;
-            font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-
-        .modal {
-            display: none; position: fixed; z-index: 1000;
-            left: 0; top: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
-            overflow-y: auto; padding: 20px;
-        }
-        .report-box {
-            max-width: 1000px; margin: 40px auto; padding: 32px;
-            position: relative;
-        }
-        .close-btn {
-            position: absolute; top: 20px; right: 20px;
-            background: rgba(255,255,255,0.1); border: none; color: #94a3b8;
-            width: 36px; height: 36px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; font-size: 18px;
-        }
-        .close-btn:hover { background: rgba(255,255,255,0.2); color: white; transform: rotate(90deg); }
-        .modal-title { margin-bottom: 24px; color: white; font-size: 24px; }
-        .report-content { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-        @media (max-width: 768px) { .report-content { grid-template-columns: 1fr; } }
-        
-        .chart-wrap { height: 400px; display: flex; align-items: center; justify-content: center; }
-        .modal-footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center; }
-
-        .sync-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            color: #34d399;
-            font-size: 12px;
-            margin-bottom: 16px;
-            background: rgba(16,185,129,0.15);
-            padding: 4px 12px;
-            border-radius: 20px;
-            border: 1px solid rgba(16,185,129,0.3);
-        }
-        
-        .sync-status::before {
-            content: '';
+        /* Table Styles */
+        .custom-scrollbar::-webkit-scrollbar {
             width: 8px;
             height: 8px;
-            background: #34d399;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Status Badges */
+        .status-pending { color: #f87171; background: rgba(248, 113, 113, 0.1); }
+        .status-inspected { color: #34d399; background: rgba(52, 211, 153, 0.1); }
+        .status-not-found { color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        
+        /* Loader */
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
             border-radius: 50%;
-            animation: pulse 2s infinite;
+            border-top: 3px solid var(--primary);
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
         }
-        
-        .sync-status.offline {
-            color: #f87171;
-            background: rgba(239,68,68,0.15);
-            border-color: rgba(239,68,68,0.3);
-        }
-        
-        .sync-status.offline::before {
-            background: #f87171;
-            animation: none;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body>
-    <!-- LOGIN -->
-    <div id="loginModal" class="modal login-screen" style="display: flex;">
-        <div class="glass-card">
-            <div class="login-header">
-                <div class="logo">
-                    <img src="100-year-Celebration-caterpillar.png" alt="Caterpillar 100 Years">
-                </div>
-                <h2>VIN Tracker Pro</h2>
-                <p style="color: #94a3b8;">Secure Access Required</p>
-            </div>
+<body class="min-h-screen flex flex-col">
+
+    <!-- ==================== LOGIN SCREEN ==================== -->
+    <div id="loginView" class="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
+        <div class="glass-panel p-8 rounded-2xl w-full max-w-md m-4 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
             
-            <div class="login-form">
-                <div class="input-group">
-                    <label>User</label>
-                    <select id="loginEmail" class="modern-input">
-                        <option value="">Select user...</option>
-                        <option value="manager@cat.com">👑 Manager (Full Access)</option>
-                        <option value="tech@cat.com">🔧 Technician (View Only)</option>
-                    </select>
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-indigo-600 rounded-xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/30">
+                    <i class="fas fa-truck-monster text-3xl text-white"></i>
                 </div>
-                
-                <div class="input-group">
-                    <label>Password</label>
-                    <input type="password" id="loginPassword" class="modern-input" placeholder="••••••••">
+                <h1 class="text-2xl font-bold text-white tracking-tight">VIN Tracker Pro</h1>
+                <p class="text-slate-400 text-sm mt-2">Secure Cloud Database Access</p>
+            </div>
+
+            <form id="loginForm" onsubmit="event.preventDefault();">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">User Role</label>
+                        <div class="relative">
+                            <i class="fas fa-user absolute left-3 top-3 text-slate-500"></i>
+                            <select id="loginEmail" class="glass-input w-full pl-10 pr-4 py-2.5 rounded-lg appearance-none cursor-pointer">
+                                <option value="" disabled selected>Select Account...</option>
+                                <option value="manager@cat.com">👑 Manager (Full Access)</option>
+                                <option value="tech@cat.com">🔧 Technician (View/Update)</option>
+                            </select>
+                            <i class="fas fa-chevron-down absolute right-3 top-3 text-slate-500 text-xs pointer-events-none"></i>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Password</label>
+                        <div class="relative">
+                            <i class="fas fa-lock absolute left-3 top-3 text-slate-500"></i>
+                            <input type="password" id="loginPassword" class="glass-input w-full pl-10 pr-4 py-2.5 rounded-lg" placeholder="••••••••">
+                        </div>
+                    </div>
+
+                    <button onclick="app.login()" id="loginBtn" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold py-2.5 rounded-lg transition-all transform hover:scale-[1.02] shadow-lg shadow-indigo-500/25 flex justify-center items-center gap-2">
+                        <span>Access System</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
                 </div>
-                
-                <button onclick="app.login()" class="btn btn-primary">
-                    <i class="fas fa-sign-in-alt"></i> Access System
-                </button>
-                
-                <div id="loginError" class="error-message"></div>
+                <div id="loginError" class="text-red-400 text-sm text-center mt-4 hidden"></div>
+            </form>
+            
+            <div class="mt-6 pt-6 border-t border-white/10 text-center">
+                <span class="text-xs text-slate-500 flex items-center justify-center gap-2">
+                    <i class="fas fa-shield-alt text-emerald-500"></i> Firebase Secured Connection
+                </span>
             </div>
         </div>
     </div>
 
-    <!-- MAIN APP -->
-    <div class="app-container" id="mainContainer">
-        <div style="text-align: center; margin-bottom: 16px;">
-            <div class="sync-status" id="syncStatus">
-                <i class="fas fa-wifi" style="font-size: 10px; margin-right: 4px;"></i> Syncing...
+    <!-- ==================== MAIN APP ==================== -->
+    <div id="appView" class="hidden flex-col min-h-screen p-4 md:p-6 max-w-[1600px] mx-auto w-full animate-fade-in">
+        
+        <!-- Header -->
+        <header class="glass-panel rounded-xl p-4 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+                <div class="h-12 w-12 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <i class="fas fa-network-wired text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                        VIN Tracker <span class="bg-indigo-500/20 text-indigo-300 text-[10px] px-2 py-0.5 rounded border border-indigo-500/30">LIVE</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Real-time Synchronization via Firebase</p>
+                </div>
             </div>
-        </div>
 
-        <header class="modern-header">
-            <div class="header-left">
-                <div class="brand-logo">
-                    <i class="fas fa-search-dollar"></i>
-                </div>
-                <div class="brand-text">
-                    <h1>VIN Tracker <span class="pro-badge">PRO</span></h1>
-                    <span class="header-separator">•</span>
-                    <span class="header-subtitle">Live Status Monitoring System</span>
-                </div>
-            </div>
-            
-            <div class="header-right">
-                <div class="session-info">
-                    <div class="avatar-icon">
-                        <i class="fas fa-user-circle"></i>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-lg border border-white/10">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <div class="flex flex-col">
+                        <span id="headerUserName" class="text-sm font-semibold text-white leading-none">User</span>
+                        <span id="headerUserRole" class="text-[10px] text-slate-400 uppercase tracking-wide">Role</span>
                     </div>
-                    <div class="user-text">
-                        <span id="currentUser" class="user-name">user@cat.com</span>
-                        <span id="userRole" class="role-tag">manager</span>
-                    </div>
-                    <button onclick="app.logout()" class="btn-logout" title="Logout">
-                        <i class="fas fa-power-off"></i>
-                    </button>
                 </div>
+                <button onclick="app.logout()" class="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors" title="Logout">
+                    <i class="fas fa-power-off"></i>
+                </button>
             </div>
         </header>
 
-        <div class="stats-row">
-            <div class="stat-card stat-pending">
-                <div class="stat-icon-box">
-                    <i class="fas fa-hourglass-half"></i>
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <!-- Total -->
+            <div class="glass-panel p-4 rounded-xl border-l-4 border-indigo-500 relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i class="fas fa-database text-6xl text-indigo-400"></i>
                 </div>
-                <div class="stat-info">
-                    <span class="stat-number" id="statPending">0</span>
-                    <span class="stat-label">Pending</span>
-                </div>
+                <p class="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Total Records</p>
+                <h3 class="text-3xl font-bold text-white" id="statTotal">0</h3>
             </div>
-
-            <div class="stat-card stat-inspected">
-                <div class="stat-icon-box">
-                    <i class="fas fa-clipboard-check"></i>
+            <!-- Pending -->
+            <div class="glass-panel p-4 rounded-xl border-l-4 border-red-500 relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i class="fas fa-hourglass-half text-6xl text-red-400"></i>
                 </div>
-                <div class="stat-info">
-                    <span class="stat-number" id="statInspected">0</span>
-                    <span class="stat-label">Inspected</span>
-                </div>
+                <p class="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Pending</p>
+                <h3 class="text-3xl font-bold text-white" id="statPending">0</h3>
             </div>
-
-            <div class="stat-card stat-notfound">
-                <div class="stat-icon-box">
-                    <i class="fas fa-exclamation-circle"></i>
+            <!-- Inspected -->
+            <div class="glass-panel p-4 rounded-xl border-l-4 border-emerald-500 relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i class="fas fa-clipboard-check text-6xl text-emerald-400"></i>
                 </div>
-                <div class="stat-info">
-                    <span class="stat-number" id="statNotFound">0</span>
-                    <span class="stat-label">Not Found</span>
-                </div>
+                <p class="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Inspected</p>
+                <h3 class="text-3xl font-bold text-white" id="statInspected">0</h3>
             </div>
-
-            <div class="stat-card stat-total">
-                <div class="stat-icon-box">
-                    <i class="fas fa-database"></i>
+            <!-- Not Found -->
+            <div class="glass-panel p-4 rounded-xl border-l-4 border-amber-500 relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i class="fas fa-exclamation-triangle text-6xl text-amber-400"></i>
                 </div>
-                <div class="stat-info">
-                    <span class="stat-number" id="statTotal">0</span>
-                    <span class="stat-label">Total Records</span>
-                </div>
+                <p class="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Not Found</p>
+                <h3 class="text-3xl font-bold text-white" id="statNotFound">0</h3>
             </div>
         </div>
 
-        <div id="inputSection" class="input-panel" style="display: none;">
-            <div class="panel-header">
-                <h3><i class="fas fa-plus-circle"></i> Batch Entry</h3>
-                <span class="badge-manager">Manager Only</span>
-            </div>
-            <p class="panel-desc">Paste VINs below. System will auto-detect Serial Numbers.</p>
-            
-            <textarea id="batchVins" placeholder="CAT00275CR8Y05091
-CAT00275CKRY05091
-CAT00275CFL12345..."></textarea>
-            
-            <div class="input-actions">
-                <button onclick="app.processBatchVins()" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Add Entries
-                </button>
-                <button onclick="app.clearInput()" class="btn btn-secondary">
-                    <i class="fas fa-eraser"></i> Clear
-                </button>
-                <button onclick="app.resetData()" class="btn btn-danger">
-                    <i class="fas fa-trash"></i> Reset All
-                </button>
-            </div>
-        </div>
-
-        <div id="techMessage" class="alert-box" style="display: none;">
-            <i class="fas fa-info-circle"></i>
-            <div>
-                <strong>View Only Mode</strong>
-                <p style="color: #94a3b8; font-size: 14px;">You can update Status from "Pending" to "Inspected/Not Found" and add comments.</p>
-            </div>
-        </div>
-
-        <div class="toolbar">
-            <div style="display: flex; align-items: center; flex: 1;">
-                <div class="search-box">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text" id="searchInput" class="search-input" 
-                           placeholder="Search VIN or Serial Number..." 
-                           onkeyup="app.handleSearch()">
-                    <button onclick="app.clearSearch()" class="search-clear" id="clearSearchBtn" style="display: none;">
-                        <i class="fas fa-times"></i>
+        <!-- Manager Input Section -->
+        <div id="managerSection" class="hidden mb-6">
+            <div class="glass-panel p-5 rounded-xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-white font-semibold flex items-center gap-2">
+                        <i class="fas fa-cloud-upload-alt text-indigo-400"></i> Batch Data Entry
+                    </h3>
+                    <span class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded border border-indigo-500/30">Manager Only</span>
+                </div>
+                <p class="text-slate-400 text-sm mb-3">Paste VINs below (one per line or comma separated). Serial numbers will be auto-detected.</p>
+                <textarea id="batchVins" class="glass-input w-full h-32 p-3 rounded-lg font-mono text-sm mb-3" placeholder="CAT00275CR8Y05091&#10;CAT00275CKRY05091..."></textarea>
+                <div class="flex gap-3">
+                    <button onclick="app.processBatchVins()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Add to Database
+                    </button>
+                    <button onclick="document.getElementById('batchVins').value=''" class="bg-white/5 hover:bg-white/10 text-slate-300 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        Clear
                     </button>
                 </div>
-                <span class="search-results" id="searchResults"></span>
             </div>
+        </div>
 
-            <div class="action-buttons">
-                <button onclick="app.generateReport()" class="btn btn-accent">
-                    <i class="fas fa-chart-pie"></i> Report
+        <!-- Technician Message -->
+        <div id="techSection" class="hidden mb-6">
+             <div class="glass-panel p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-start gap-3">
+                <i class="fas fa-info-circle text-amber-400 mt-1"></i>
+                <div>
+                    <h4 class="text-amber-200 font-semibold text-sm">View & Update Mode</h4>
+                    <p class="text-amber-200/70 text-xs mt-1">You can update Status from "Pending" to "Inspected" or "Not Found" and add comments. You cannot add new VINs.</p>
+                </div>
+             </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="flex flex-col md:flex-row justify-between gap-4 mb-4">
+            <div class="relative flex-1 max-w-md">
+                <i class="fas fa-search absolute left-3 top-3 text-slate-500"></i>
+                <input type="text" id="searchInput" onkeyup="app.handleSearch()" placeholder="Search VIN or Serial..." class="glass-input w-full pl-10 pr-4 py-2.5 rounded-lg text-sm">
+                <div id="searchStats" class="absolute right-3 top-3 text-xs text-slate-500 hidden"></div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="app.generateReport()" class="glass-input hover:bg-white/10 px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors">
+                    <i class="fas fa-chart-pie text-purple-400"></i> Analytics
                 </button>
-                <button onclick="app.exportExcel()" class="btn btn-success">
-                    <i class="fas fa-file-excel"></i> Excel
+                <button onclick="app.exportExcel()" class="glass-input hover:bg-white/10 px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors">
+                    <i class="fas fa-file-excel text-emerald-400"></i> Excel
                 </button>
-                <button onclick="app.exportPDF()" class="btn btn-danger">
-                    <i class="fas fa-file-pdf"></i> PDF
+                <button onclick="app.exportPDF()" class="glass-input hover:bg-white/10 px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors">
+                    <i class="fas fa-file-pdf text-red-400"></i> PDF
                 </button>
             </div>
         </div>
 
-        <div class="table-wrap">
-            <table id="dataTable">
-                <thead>
-                    <tr>
-                        <th width="40">#</th>
-                        <th>VIN</th>
-                        <th>Serial Number</th>
-                        <th width="110">Date</th>
-                        <th width="130">Status</th>
-                        <th>Technician</th>
-                        <th width="140">Last Update</th>
-                        <th>Comments</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-            </table>
-            
-            <div id="emptyState" class="empty-state" style="display: none;">
-                <i class="fas fa-inbox"></i>
-                <h3>No records found</h3>
-                <p>Try adjusting your search criteria</p>
+        <!-- Data Table -->
+        <div class="glass-panel rounded-xl overflow-hidden flex-1 flex flex-col min-h-[400px]">
+            <div class="overflow-x-auto custom-scrollbar flex-1">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-white/5 text-slate-400 text-xs uppercase tracking-wider border-b border-white/10">
+                            <th class="p-4 font-semibold">#</th>
+                            <th class="p-4 font-semibold">VIN Number</th>
+                            <th class="p-4 font-semibold">Serial No.</th>
+                            <th class="p-4 font-semibold">Entry Date</th>
+                            <th class="p-4 font-semibold">Status</th>
+                            <th class="p-4 font-semibold">Technician</th>
+                            <th class="p-4 font-semibold">Last Update</th>
+                            <th class="p-4 font-semibold w-1/4">Comments</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="text-sm divide-y divide-white/5">
+                        <!-- Rows generated by JS -->
+                        <tr>
+                            <td colspan="8" class="p-8 text-center text-slate-500">
+                                <div class="flex flex-col items-center gap-2">
+                                    <div class="loader mb-2"></div>
+                                    <span>Connecting to Firebase...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-        </div>
-
-        <div class="footer-bar">
-            <i class="fas fa-sync-alt"></i> <span id="lastUpdate">Updated: Just now</span>
+            <div class="p-3 border-t border-white/10 bg-white/5 text-xs text-slate-500 flex justify-between items-center">
+                <span id="lastUpdate">Waiting for data...</span>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Live
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="reportModal" class="modal">
-        <div class="glass-card report-box">
-            <button class="close-btn" onclick="app.closeReport()">
-                <i class="fas fa-times"></i>
-            </button>
-            
-            <h2 class="modal-title"><i class="fas fa-chart-pie"></i> Status Analytics</h2>
-            
-            <div class="report-content">
-                <div id="reportContent" style="max-height: 500px; overflow-y: auto;"></div>
-                <div class="chart-wrap">
+    <!-- Report Modal -->
+    <div id="reportModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl flex flex-col">
+            <div class="p-6 border-b border-white/10 flex justify-between items-center sticky top-0 bg-[#1e293b]/95 backdrop-blur z-10">
+                <h2 class="text-xl font-bold text-white">Status Analytics</h2>
+                <button onclick="document.getElementById('reportModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div id="reportContent" class="space-y-4">
+                    <!-- Report details -->
+                </div>
+                <div class="h-64 md:h-auto flex items-center justify-center bg-white/5 rounded-xl p-4 border border-white/10">
                     <canvas id="statusChart"></canvas>
                 </div>
             </div>
-            
-            <div class="modal-footer">
-                <button onclick="app.exportReportPDF()" class="btn btn-danger">
+            <div class="p-6 border-t border-white/10 bg-white/5 flex justify-end">
+                <button onclick="app.exportReportPDF()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
                     <i class="fas fa-download"></i> Download PDF
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- FIREBASE SDK (Compat para facilitar la integración) -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
-    
-    <script>
-        // 🔥 TU CONFIGURACIÓN FIREBASE
+    <!-- ==================== FIREBASE & LOGIC ==================== -->
+    <!-- Firebase Modular SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue, set, push, update, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyD3uWheIL3CuqF4yAetxLIEt8DMcKY9W98",
             authDomain: "vin-tracker-f0834.firebaseapp.com",
@@ -654,133 +355,172 @@ CAT00275CFL12345..."></textarea>
             appId: "1:949409357299:web:0752144b2db947be1b0686"
         };
 
-        // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        const vinsRef = database.ref('vins');
+        // Initialize Firebase
+        const appFb = initializeApp(firebaseConfig);
+        const db = getDatabase(appFb);
+        const auth = getAuth(appFb);
+        const dbRef = ref(db, 'vins');
 
+        // Main Application Logic
         const app = {
             data: [],
             filteredData: [],
             currentUser: null,
-            userRole: null,
+            userRole: null, // 'manager' or 'tech'
             chart: null,
-            searchTerm: '',
             
+            // Hardcoded Local Credentials (Simulating a company directory)
+            // In production, you would use Firebase Auth users directly.
             credentials: {
                 'manager@cat.com': { password: 'admin123', role: 'manager' },
                 'tech@cat.com': { password: 'tech123', role: 'tech' }
             },
 
             init() {
-                // Verificar sesión guardada
-                const session = localStorage.getItem('vin_tracker_session');
-                if (session) {
-                    const parsed = JSON.parse(session);
-                    this.currentUser = parsed.email;
-                    this.userRole = parsed.role;
-                    this.showMainInterface();
-                }
+                // Check Firebase Auth state
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        // User is signed in.
+                        // Note: In a real app, you would fetch the role from Firestore/RTDB here.
+                        // We are simulating role persistence via local logic for this demo.
+                        const savedSession = JSON.parse(localStorage.getItem('vin_tracker_session'));
+                        if(savedSession) {
+                            this.currentUser = savedSession.email;
+                            this.userRole = savedSession.role;
+                            this.showMainInterface();
+                        } else {
+                            this.logout();
+                        }
+                    } else {
+                        // User is signed out.
+                        document.getElementById('loginView').classList.remove('hidden');
+                        document.getElementById('appView').classList.add('hidden');
+                        document.getElementById('appView').classList.remove('flex');
+                    }
+                });
             },
 
             login() {
                 const email = document.getElementById('loginEmail').value;
                 const password = document.getElementById('loginPassword').value;
                 const errorDiv = document.getElementById('loginError');
+                const btn = document.getElementById('loginBtn');
+                
+                errorDiv.classList.add('hidden');
                 
                 if (!email || !password) {
                     errorDiv.textContent = 'Please enter credentials';
+                    errorDiv.classList.remove('hidden');
                     return;
                 }
-                
-                const user = this.credentials[email];
-                if (!user || user.password !== password) {
+
+                // 1. Check Local Logic (Simulation)
+                const userInfo = this.credentials[email];
+                if (!userInfo || userInfo.password !== password) {
                     errorDiv.textContent = 'Invalid credentials';
+                    errorDiv.classList.remove('hidden');
                     return;
                 }
+
+                // 2. Authenticate with Firebase (Simulated Anonymous or Real)
+                // For this demo, we use a generic sign in or anonymous. 
+                // Ideally, you create users in Firebase Auth console.
+                // Here we just trigger the state change.
+                btn.innerHTML = '<div class="loader border-white/30 border-t-white w-5 h-5"></div> Connecting...';
                 
-                this.currentUser = email;
-                this.userRole = user.role;
-                
-                localStorage.setItem('vin_tracker_session', JSON.stringify({
-                    email: email,
-                    role: user.role,
-                    timestamp: new Date().toISOString()
-                }));
-                
-                this.showMainInterface();
+                // Sign in anonymously to Firebase to get a token for RTDB
+                signInWithEmailAndPassword(auth, email, password)
+                    .then((userCredential) => {
+                        // Signed in 
+                        this.currentUser = email;
+                        this.userRole = userInfo.role;
+                        localStorage.setItem('vin_tracker_session', JSON.stringify({
+                            email: email,
+                            role: this.userRole
+                        }));
+                        this.showMainInterface();
+                    })
+                    .catch((error) => {
+                        // If Firebase Auth fails (user not created in console), simulate success for demo
+                        // In a real app, you would create the user in Firebase Console first.
+                        console.warn("Firebase Auth Error (Expected if users not in console):", error);
+                        
+                        // Fallback for demo purposes if Firebase Auth isn't set up with these specific emails
+                        // We simulate the login UI change but warn in console.
+                        if(error.code === 'auth/user-not-found') {
+                             alert("Demo Mode: User not found in Firebase Console. Please create user or use local simulation.");
+                             // Forcing local simulation for the sake of the functional demo:
+                             this.currentUser = email;
+                             this.userRole = userInfo.role;
+                             localStorage.setItem('vin_tracker_session', JSON.stringify({
+                                email: email,
+                                role: this.userRole
+                             }));
+                             this.showMainInterface();
+                        } else {
+                            errorDiv.textContent = error.message;
+                            errorDiv.classList.remove('hidden');
+                            btn.innerHTML = '<span>Access System</span><i class="fas fa-arrow-right"></i>';
+                        }
+                    });
             },
 
             logout() {
-                if (confirm('Logout?')) {
+                signOut(auth).then(() => {
                     localStorage.removeItem('vin_tracker_session');
-                    // Detener listener de Firebase
-                    vinsRef.off();
                     location.reload();
-                }
+                }).catch((error) => {
+                    console.error(error);
+                });
             },
 
             showMainInterface() {
-                document.getElementById('loginModal').style.display = 'none';
-                document.getElementById('mainContainer').style.display = 'block';
+                document.getElementById('loginView').classList.add('hidden');
+                const appView = document.getElementById('appView');
+                appView.classList.remove('hidden');
+                appView.classList.add('flex');
                 
-                document.getElementById('currentUser').textContent = this.currentUser;
-                document.getElementById('userRole').textContent = this.userRole;
-
+                // Header Info
+                document.getElementById('headerUserName').textContent = this.currentUser;
+                document.getElementById('headerUserRole').textContent = this.userRole;
+                
+                // Role UI
                 if (this.userRole === 'manager') {
-                    document.getElementById('inputSection').style.display = 'block';
-                    document.getElementById('techMessage').style.display = 'none';
+                    document.getElementById('managerSection').classList.remove('hidden');
+                    document.getElementById('techSection').classList.add('hidden');
                 } else {
-                    document.getElementById('inputSection').style.display = 'none';
-                    document.getElementById('techMessage').style.display = 'flex';
+                    document.getElementById('managerSection').classList.add('hidden');
+                    document.getElementById('techSection').classList.remove('hidden');
                 }
-                
-                // Iniciar sincronización con Firebase
-                this.setupRealtimeSync();
+
+                // Start Firebase Listener
+                this.listenToData();
             },
 
-            setupRealtimeSync() {
-                const statusDiv = document.getElementById('syncStatus');
-                
-                // Escuchar cambios en tiempo real
-                vinsRef.on('value', (snapshot) => {
+            listenToData() {
+                onValue(dbRef, (snapshot) => {
                     const data = snapshot.val();
+                    this.data = [];
                     if (data) {
-                        // Convertir objeto Firebase a array
-                        this.data = Object.keys(data).map(key => ({
-                            firebaseKey: key,
-                            ...data[key]
-                        }));
-                        // Ordenar por timestamp descendente
-                        this.data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                    } else {
-                        this.data = [];
+                        // Convert Firebase object to Array
+                        Object.keys(data).forEach(key => {
+                            this.data.push({
+                                firebaseId: key, // Store the key to update later
+                                ...data[key]
+                            });
+                        });
+                        // Sort by date descending
+                        this.data.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
                     }
-                    
                     this.filteredData = [...this.data];
-                    this.updateStats();
-                    this.renderTable();
-                    
-                    statusDiv.innerHTML = '<i class="fas fa-wifi" style="font-size: 10px; margin-right: 4px;"></i> SYNCHRONIZED';
-                    statusDiv.classList.remove('offline');
-                    document.getElementById('lastUpdate').textContent = 'Updated: ' + new Date().toLocaleString();
-                }, (error) => {
-                    console.error('Firebase error:', error);
-                    statusDiv.innerHTML = '<i class="fas fa-wifi-slash" style="font-size: 10px; margin-right: 4px;"></i> OFFLINE';
-                    statusDiv.classList.add('offline');
+                    this.render();
                 });
+            },
 
-                // Detectar conexión
-                const connectedRef = database.ref(".info/connected");
-                connectedRef.on("value", (snap) => {
-                    if (snap.val() === true) {
-                        statusDiv.innerHTML = '<i class="fas fa-wifi" style="font-size: 10px; margin-right: 4px;"></i> SYNCHRONIZED';
-                        statusDiv.classList.remove('offline');
-                    } else {
-                        statusDiv.innerHTML = '<i class="fas fa-wifi-slash" style="font-size: 10px; margin-right: 4px;"></i> OFFLINE';
-                        statusDiv.classList.add('offline');
-                    }
-                });
+            render() {
+                this.updateStats();
+                this.renderTable();
+                document.getElementById('lastUpdate').textContent = `Updated: ${new Date().toLocaleTimeString()}`;
             },
 
             updateStats() {
@@ -795,71 +535,109 @@ CAT00275CFL12345..."></textarea>
                 document.getElementById('statTotal').textContent = stats.Total;
             },
 
-            handleSearch() {
-                const input = document.getElementById('searchInput');
-                const term = input.value.trim().toUpperCase();
-                const clearBtn = document.getElementById('clearSearchBtn');
-                const resultsLabel = document.getElementById('searchResults');
-                
-                this.searchTerm = term;
-                
-                if (term) {
-                    clearBtn.style.display = 'flex';
-                    this.filteredData = this.data.filter(row => 
-                        row.vin.toUpperCase().includes(term) || 
-                        row.serialNumber.toUpperCase().includes(term)
-                    );
-                    resultsLabel.textContent = `${this.filteredData.length} found`;
-                } else {
-                    clearBtn.style.display = 'none';
-                    this.filteredData = [...this.data];
-                    resultsLabel.textContent = '';
-                }
-                
-                this.renderTable();
-            },
+            renderTable() {
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = '';
 
-            clearSearch() {
-                document.getElementById('searchInput').value = '';
-                this.searchTerm = '';
-                this.filteredData = [...this.data];
-                document.getElementById('clearSearchBtn').style.display = 'none';
-                document.getElementById('searchResults').textContent = '';
-                this.renderTable();
-            },
-
-            clearInput() {
-                document.getElementById('batchVins').value = '';
-                document.getElementById('batchVins').focus();
-            },
-
-            async processBatchVins() {
-                if (this.userRole !== 'manager') return;
-                
-                const textarea = document.getElementById('batchVins');
-                const text = textarea.value.trim();
-                
-                if (!text) {
-                    alert('Enter VINs');
+                if (this.filteredData.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-500">No records found</td></tr>`;
                     return;
                 }
 
-                const vins = text.split(/[\n,\s\t]+/)
-                    .map(v => v.trim().toUpperCase())
-                    .filter(v => v.length > 0);
+                this.filteredData.forEach((row, index) => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-white/5 transition-colors border-b border-white/5 group";
+                    
+                    const isManager = this.userRole === 'manager';
+                    const isPending = row.status === 'Pending';
+                    
+                    // Cell Styles
+                    const inputBase = "bg-transparent border border-transparent focus:border-indigo-500 rounded px-2 py-1 w-full text-slate-300 focus:text-white focus:outline-none transition-all";
+                    const readonlyStyle = "text-slate-500 cursor-not-allowed";
+                    
+                    // Status Badge Logic
+                    let statusBadge = '';
+                    if(row.status === 'Pending') statusBadge = '<span class="px-2 py-1 rounded text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">PENDING</span>';
+                    else if(row.status === 'Inspected') statusBadge = '<span class="px-2 py-1 rounded text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">INSPECTED</span>';
+                    else if(row.status === 'Not Found') statusBadge = '<span class="px-2 py-1 rounded text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">NOT FOUND</span>';
 
+                    // Controls
+                    // Manager can edit anything. Tech can only edit Pending status and comments.
+                    const canEditStatus = isManager || isPending;
+                    const canEditComment = true; // Both can comment
+                    
+                    // Status Select Options
+                    const statusOptions = ['Pending', 'Inspected', 'Not Found'].map(s => 
+                        `<option value="${s}" ${row.status === s ? 'selected' : ''}>${s}</option>`
+                    ).join('');
+
+                    tr.innerHTML = `
+                        <td class="p-4 text-slate-500 text-xs">${index + 1}</td>
+                        <td class="p-4 font-mono text-indigo-300">${row.vin || ''}</td>
+                        <td class="p-4 font-mono text-xs text-slate-400">${row.serialNumber || ''}</td>
+                        <td class="p-4 text-slate-400 text-xs">${row.entryDate || ''}</td>
+                        <td class="p-4">
+                            ${isManager ? 
+                                `<select onchange="app.updateStatus('${row.firebaseId}', this.value)" class="${inputBase} bg-slate-800/50 cursor-pointer">${statusOptions}</select>` : 
+                                statusBadge
+                            }
+                        </td>
+                        <td class="p-4 text-xs text-slate-400">${row.assignedTech || '-'}</td>
+                        <td class="p-4 text-xs text-slate-500">${row.lastUpdate ? new Date(row.lastUpdate).toLocaleDateString() : '-'}</td>
+                        <td class="p-4">
+                            <input type="text" 
+                                value="${row.comments || ''}" 
+                                onchange="app.updateComment('${row.firebaseId}', this.value)"
+                                placeholder="Add notes..."
+                                class="${inputBase} text-xs ${!canEditComment ? readonlyStyle : ''}" 
+                                ${!canEditComment ? 'readonly' : ''}
+                            >
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            },
+
+            handleSearch() {
+                const term = document.getElementById('searchInput').value.toLowerCase();
+                const stats = document.getElementById('searchStats');
+                
+                if (!term) {
+                    this.filteredData = [...this.data];
+                    stats.classList.add('hidden');
+                } else {
+                    this.filteredData = this.data.filter(row => 
+                        (row.vin && row.vin.toLowerCase().includes(term)) || 
+                        (row.serialNumber && row.serialNumber.toLowerCase().includes(term))
+                    );
+                    stats.textContent = `${this.filteredData.length} results`;
+                    stats.classList.remove('hidden');
+                }
+                this.renderTable();
+            },
+
+            // Firebase Operations
+            processBatchVins() {
+                if (this.userRole !== 'manager') return alert("Access Denied");
+                
+                const textarea = document.getElementById('batchVins');
+                const text = textarea.value.trim();
+                if (!text) return;
+
+                const vins = text.split(/[\n,\s\t]+/).map(v => v.trim().toUpperCase()).filter(v => v.length > 5);
                 if (vins.length === 0) return;
 
-                const updates = {};
                 const entryDate = new Date().toISOString().split('T')[0];
+                const timestamp = Date.now();
 
                 vins.forEach(vin => {
+                    // Extract Serial Number logic
                     const serialMatch = vin.match(/(FL|R8|ZE|KR|2X|P9).*$/i);
-                    const serialNumber = serialMatch ? serialMatch[0] : '';
-                    
-                    // Crear nueva entrada con push() para obtener ID único
-                    const newKey = vinsRef.push().key;
-                    updates[newKey] = {
+                    const serialNumber = serialMatch ? serialMatch[0] : 'N/A';
+
+                    // Push to Firebase
+                    const newEntryRef = push(dbRef);
+                    set(newEntryRef, {
                         vin: vin,
                         serialNumber: serialNumber,
                         entryDate: entryDate,
@@ -867,146 +645,48 @@ CAT00275CFL12345..."></textarea>
                         assignedTech: '',
                         lastUpdate: null,
                         comments: '',
-                        timestamp: Date.now()
-                    };
-                });
-
-                try {
-                    // Actualizar Firebase (esto disparará el listener automáticamente)
-                    await vinsRef.update(updates);
-                    textarea.value = '';
-                    alert(`✅ Added ${vins.length} VINs`);
-                } catch (error) {
-                    alert('Error adding VINs: ' + error.message);
-                }
-            },
-
-            renderTable() {
-                const tbody = document.getElementById('tableBody');
-                const emptyState = document.getElementById('emptyState');
-                const dataToShow = this.searchTerm ? this.filteredData : this.data;
-                
-                tbody.innerHTML = '';
-
-                if (dataToShow.length === 0) {
-                    emptyState.style.display = 'block';
-                    tbody.style.display = 'none';
-                    return;
-                }
-                
-                emptyState.style.display = 'none';
-                tbody.style.display = 'table-row-group';
-
-                dataToShow.forEach((row, index) => {
-                    const tr = document.createElement('tr');
-                    tr.className = row.status ? `status-${row.status.toLowerCase().replace(' ', '-')}` : '';
-                    
-                    const isManager = this.userRole === 'manager';
-                    const isPending = row.status === 'Pending';
-                    
-                    const vinReadonly = !isManager ? 'readonly style="color: #64748b;"' : '';
-                    const dateReadonly = !isManager ? 'readonly style="color: #64748b;"' : '';
-                    const statusDisabled = (!isManager && !isPending) ? 'disabled' : '';
-                    
-                    tr.innerHTML = `
-                        <td>${index + 1}</td>
-                        <td><input type="text" class="input-cell" value="${row.vin}" data-field="vin" data-key="${row.firebaseKey}" ${vinReadonly}></td>
-                        <td><input type="text" class="input-cell" value="${row.serialNumber}" readonly style="font-family: monospace; color: #60a5fa; font-weight: 600;"></td>
-                        <td><input type="date" class="input-cell" value="${row.entryDate}" data-field="entryDate" data-key="${row.firebaseKey}" ${dateReadonly}></td>
-                        <td>
-                            <select class="input-cell" data-field="status" data-key="${row.firebaseKey}" ${statusDisabled}>
-                                <option value="Pending" ${row.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                                <option value="Inspected" ${row.status === 'Inspected' ? 'selected' : ''}>Inspected</option>
-                                <option value="Not Found" ${row.status === 'Not Found' ? 'selected' : ''}>Not Found</option>
-                            </select>
-                        </td>
-                        <td><input type="text" class="input-cell" value="${row.assignedTech}" readonly style="color: #94a3b8; font-size: 12px;"></td>
-                        <td><input type="text" class="input-cell" value="${row.lastUpdate ? new Date(row.lastUpdate).toLocaleString() : ''}" readonly style="color: #94a3b8; font-size: 12px;"></td>
-                        <td><input type="text" class="input-cell" value="${row.comments}" data-field="comments" data-key="${row.firebaseKey}" placeholder="Add comment..."></td>
-                    `;
-                    
-                    tbody.appendChild(tr);
-                });
-
-                tbody.querySelectorAll('input, select').forEach(input => {
-                    let oldValue = input.value;
-                    input.addEventListener('focus', () => { oldValue = input.value; });
-                    input.addEventListener('change', (e) => {
-                        const key = e.target.dataset.key;
-                        const field = e.target.dataset.field;
-                        this.handleEdit(key, field, e.target.value, oldValue);
+                        timestamp: timestamp
                     });
                 });
+
+                textarea.value = '';
+                alert(`Successfully added ${vins.length} records to Firebase`);
             },
 
-            async handleEdit(key, field, value, oldValue) {
-                if (this.userRole === 'tech' && !['status', 'comments'].includes(field)) {
-                    this.renderTable();
-                    return;
-                }
+            updateStatus(id, newStatus) {
+                const row = this.data.find(r => r.firebaseId === id);
+                if (!row) return;
 
-                if (!key) return;
-
-                try {
-                    const rowRef = database.ref('vins/' + key);
-                    
-                    if (field === 'vin') {
-                        const vin = value.toString().trim().toUpperCase();
-                        const serialMatch = vin.match(/(FL|R8|ZE|KR|2X|P9).*$/i);
-                        const serialNumber = serialMatch ? serialMatch[0] : '';
-                        
-                        await rowRef.update({
-                            vin: vin,
-                            serialNumber: serialNumber
-                        });
-                    } else if (field === 'status') {
-                        let oldStatus = oldValue ? oldValue.toString().trim() : '';
-                        let newStatus = value ? value.toString().trim() : '';
-
-                        if (['in progress', 'not found'].includes(newStatus.toLowerCase())) {
-                            newStatus = 'Not Found';
-                        }
-
-                        if (oldStatus === 'Pending' && newStatus !== 'Pending') {
-                            await rowRef.update({
-                                status: newStatus,
-                                assignedTech: this.currentUser,
-                                lastUpdate: new Date().toISOString()
-                            });
-                        } else if (oldStatus !== 'Pending' && this.userRole === 'tech') {
-                            // Tech no puede cambiar status si no es de Pending
-                            return;
-                        } else {
-                            await rowRef.update({
-                                status: newStatus
-                            });
-                        }
-                    } else if (field === 'comments' || field === 'entryDate') {
-                        const updateData = { [field]: value };
-                        if (field === 'comments') {
-                            updateData.lastUpdate = new Date().toISOString();
-                        }
-                        await rowRef.update(updateData);
-                    }
-                } catch (error) {
-                    alert('Error updating: ' + error.message);
-                    this.renderTable();
+                // Logic: If changing FROM Pending, lock it and assign tech
+                // Only Manager can change from Inspected/Not Found back to Pending
+                if (row.status === 'Pending' && newStatus !== 'Pending') {
+                    update(ref(db, 'vins/' + id), {
+                        status: newStatus,
+                        assignedTech: this.currentUser,
+                        lastUpdate: new Date().toISOString()
+                    });
+                } else if (this.userRole === 'manager') {
+                    // Manager can do anything
+                    update(ref(db, 'vins/' + id), {
+                        status: newStatus,
+                        lastUpdate: new Date().toISOString()
+                    });
+                } else {
+                    alert("You can only update status from 'Pending'.");
+                    this.renderTable(); // Reset UI
                 }
             },
 
-            async resetData() {
-                if (this.userRole !== 'manager') return;
-                if (confirm('Delete all data? This will affect all connected devices.')) {
-                    try {
-                        await vinsRef.remove();
-                        this.searchTerm = '';
-                        document.getElementById('searchInput').value = '';
-                    } catch (error) {
-                        alert('Error deleting: ' + error.message);
-                    }
-                }
+            updateComment(id, comment) {
+                // Both can comment, but let's log who did it? 
+                // For now, just update comment.
+                update(ref(db, 'vins/' + id), {
+                    comments: comment,
+                    lastUpdate: new Date().toISOString() // Updating timestamp on comment too
+                });
             },
 
+            // Exports
             exportExcel() {
                 if (this.data.length === 0) return alert('No data');
                 const exportData = this.data.map(r => ({
@@ -1042,42 +722,56 @@ CAT00275CFL12345..."></textarea>
             },
 
             generateReport() {
-                document.getElementById('reportModal').style.display = 'block';
-                setTimeout(() => this.renderChart(), 100);
+                const grupos = { 'Pending': [], 'Inspected': [], 'Not Found': [] };
+                this.data.forEach(row => {
+                    if (grupos[row.status]) grupos[row.status].push(row);
+                });
+
+                this.renderReportModal(grupos);
+                document.getElementById('reportModal').classList.remove('hidden');
             },
 
-            renderChart() {
-                const grupos = {};
-                this.data.forEach(row => {
-                    let status = row.status || '';
-                    if (['in progress', 'not found'].includes(status.toLowerCase())) status = 'Not Found';
-                    if (!status) return;
-                    if (!grupos[status]) grupos[status] = [];
-                    grupos[status].push(row);
+            renderReportModal(grupos) {
+                const container = document.getElementById('reportContent');
+                const orden = ["Inspected", "Pending", "Not Found"];
+                
+                let html = '';
+                orden.forEach(status => {
+                    const items = grupos[status];
+                    const color = status === 'Pending' ? 'text-red-400' : (status === 'Inspected' ? 'text-emerald-400' : 'text-amber-400');
+                    
+                    html += `
+                        <div class="bg-white/5 rounded-lg p-4 border border-white/10">
+                            <h4 class="font-bold mb-2 ${color} flex justify-between">
+                                <span>${status}</span>
+                                <span class="bg-white/10 px-2 rounded text-xs py-1">${items.length}</span>
+                            </h4>
+                            <ul class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                                ${items.length ? items.map(i => `
+                                    <li class="text-xs text-slate-400 flex justify-between border-b border-white/5 pb-1 last:border-0">
+                                        <span>${i.vin}</span>
+                                        <span class="font-mono text-slate-600">${i.serialNumber}</span>
+                                    </li>
+                                `).join('') : '<li class="text-xs text-slate-600 italic">None</li>'}
+                            </ul>
+                        </div>
+                    `;
                 });
+                container.innerHTML = html;
+                this.renderChart(grupos);
+            },
 
+            renderChart(grupos) {
                 const ctx = document.getElementById('statusChart');
-                if (!ctx) return;
-                
                 if (this.chart) this.chart.destroy();
-                
-                const labels = Object.keys(grupos);
-                const data = labels.map(l => grupos[l].length);
-                
-                const colors = labels.map(s => {
-                    if (s === 'Pending') return '#ef4444';
-                    if (s === 'Inspected') return '#10b981';
-                    if (s === 'Not Found') return '#f59e0b';
-                    return '#6366f1';
-                });
                 
                 this.chart = new Chart(ctx, {
                     type: 'doughnut',
                     data: {
-                        labels: labels,
+                        labels: ['Inspected', 'Pending', 'Not Found'],
                         datasets: [{
-                            data: data,
-                            backgroundColor: colors,
+                            data: [grupos['Inspected'].length, grupos['Pending'].length, grupos['Not Found'].length],
+                            backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
                             borderWidth: 0,
                             hoverOffset: 4
                         }]
@@ -1086,148 +780,23 @@ CAT00275CFL12345..."></textarea>
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                            legend: { 
-                                position: 'bottom',
-                                labels: { color: '#f8fafc', padding: 20 }
-                            }
+                            legend: { position: 'bottom', labels: { color: '#94a3b8' } }
                         },
-                        cutout: '60%'
+                        cutout: '70%'
                     }
                 });
-                
-                this.renderReportList(grupos);
             },
-
-            renderReportList(grupos) {
-                const container = document.getElementById('reportContent');
-                const orden = ["Inspected", "Pending", "Not Found"];
-                const todos = orden.concat(Object.keys(grupos).filter(s => !orden.includes(s)));
-                
-                let html = '';
-                todos.forEach(status => {
-                    if (!grupos[status]) return;
-                    const filas = grupos[status];
-                    const color = this.getStatusColor(status);
-                    const textColor = this.getStatusTextColor(status);
-                    
-                    html += `
-                        <div style="margin-bottom: 20px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 12px; border-left: 4px solid ${color};">
-                            <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: ${textColor};">
-                                ${status} (${filas.length})
-                            </div>
-                            <div style="font-size: 13px; color: #94a3b8;">
-                                ${filas.map(f => `
-                                    <div style="padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between;">
-                                        <span><strong>${f.vin}</strong> → ${f.serialNumber}</span>
-                                        ${f.assignedTech ? `<span style="color: #64748b;">${f.assignedTech}</span>` : ''}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                container.innerHTML = html || '<p>No data</p>';
-            },
-
-            getStatusColor(status) {
-                if (status === 'Pending') return '#ef4444';
-                if (status === 'Inspected') return '#10b981';
-                if (status === 'Not Found') return '#f59e0b';
-                return '#6366f1';
-            },
-
-            getStatusTextColor(status) {
-                if (status === 'Pending') return '#f87171';
-                if (status === 'Inspected') return '#34d399';
-                if (status === 'Not Found') return '#fbbf24';
-                return '#a5b4fc';
-            },
-
+            
             exportReportPDF() {
-                if (this.data.length === 0) return alert('No data');
-                
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF('l', 'mm', 'a4');
-                
-                doc.setFontSize(18);
-                doc.text('Status Analytics Report', 14, 20);
-                doc.setFontSize(10);
-                doc.text(`Generated: ${new Date().toLocaleString()} | User: ${this.currentUser}`, 14, 30);
-                
-                const grupos = {};
-                this.data.forEach(row => {
-                    let status = row.status || '';
-                    if (['in progress', 'not found'].includes(status.toLowerCase())) status = 'Not Found';
-                    if (!status) return;
-                    if (!grupos[status]) grupos[status] = [];
-                    grupos[status].push(row);
-                });
-
-                const orden = ["Inspected", "Pending", "Not Found"];
-                const todos = orden.concat(Object.keys(grupos).filter(s => !orden.includes(s)));
-                
-                let yPos = 45;
-                
-                todos.forEach((status) => {
-                    if (!grupos[status]) return;
-                    const items = grupos[status];
-                    
-                    if (yPos > 180) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-                    
-                    let fillColor = [99, 102, 241];
-                    if (status === 'Pending') fillColor = [239, 68, 68];
-                    if (status === 'Inspected') fillColor = [16, 185, 129];
-                    if (status === 'Not Found') fillColor = [245, 158, 11];
-                    
-                    doc.setFontSize(14);
-                    doc.setTextColor(fillColor[0], fillColor[1], fillColor[2]);
-                    doc.text(`${status} (${items.length})`, 14, yPos);
-                    doc.setTextColor(0, 0, 0);
-                    yPos += 8;
-                    
-                    const tableData = items.map(r => [
-                        r.vin, 
-                        r.serialNumber, 
-                        r.assignedTech || '-', 
-                        r.lastUpdate ? new Date(r.lastUpdate).toLocaleDateString() : '-'
-                    ]);
-                    
-                    doc.autoTable({
-                        head: [['VIN', 'Serial Number', 'Technician', 'Last Update']],
-                        body: tableData,
-                        startY: yPos,
-                        styles: { fontSize: 9, cellPadding: 2 },
-                        headStyles: { fillColor: fillColor, textColor: 255 },
-                        alternateRowStyles: { fillColor: [245, 245, 245] },
-                        margin: { left: 14, right: 14 }
-                    });
-                    
-                    yPos = doc.lastAutoTable.finalY + 15;
-                });
-                
-                doc.save(`Analytics_Report_${new Date().toISOString().split('T')[0]}.pdf`);
-            },
-
-            closeReport() {
-                document.getElementById('reportModal').style.display = 'none';
+                // Simplified reuse of exportPDF for the report view
+                this.exportPDF(); 
+                document.getElementById('reportModal').classList.add('hidden');
             }
         };
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => app.init());
-        } else {
-            app.init();
-        }
-
-        window.onclick = (e) => {
-            if (e.target.classList.contains('modal') && e.target.id !== 'loginModal') {
-                e.target.style.display = 'none';
-            }
-        };
+        // Initialize
+        window.app = app; // Expose to window for HTML onclick events
+        app.init();
     </script>
 </body>
 </html>
