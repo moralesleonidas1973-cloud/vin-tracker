@@ -296,7 +296,7 @@
             appearance: none;
             -webkit-appearance: none;
             -moz-appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f1f5f9' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg ' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f1f5f9' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 12px center;
             padding-right: 36px;
@@ -367,6 +367,44 @@
         
         .chart-wrap { height: 400px; display: flex; align-items: center; justify-content: center; }
         .modal-footer { margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center; }
+
+        .sync-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #34d399;
+            font-size: 12px;
+            margin-bottom: 16px;
+            background: rgba(16,185,129,0.15);
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(16,185,129,0.3);
+        }
+        
+        .sync-status::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #34d399;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .sync-status.offline {
+            color: #f87171;
+            background: rgba(239,68,68,0.15);
+            border-color: rgba(239,68,68,0.3);
+        }
+        
+        .sync-status.offline::before {
+            background: #f87171;
+            animation: none;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
@@ -407,6 +445,12 @@
 
     <!-- MAIN APP -->
     <div class="app-container" id="mainContainer">
+        <div style="text-align: center; margin-bottom: 16px;">
+            <div class="sync-status" id="syncStatus">
+                <i class="fas fa-wifi" style="font-size: 10px; margin-right: 4px;"></i> Syncing...
+            </div>
+        </div>
+
         <header class="modern-header">
             <div class="header-left">
                 <div class="brand-logo">
@@ -588,6 +632,10 @@ CAT00275CFL12345..."></textarea>
         </div>
     </div>
 
+    <!-- FIREBASE SDK (Compat para facilitar la integración) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -595,6 +643,22 @@ CAT00275CFL12345..."></textarea>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     
     <script>
+        // 🔥 TU CONFIGURACIÓN FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyD3uWheIL3CuqF4yAetxLIEt8DMcKY9W98",
+            authDomain: "vin-tracker-f0834.firebaseapp.com",
+            databaseURL: "https://vin-tracker-f0834-default-rtdb.firebaseio.com",
+            projectId: "vin-tracker-f0834",
+            storageBucket: "vin-tracker-f0834.firebasestorage.app",
+            messagingSenderId: "949409357299",
+            appId: "1:949409357299:web:0752144b2db947be1b0686"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const vinsRef = database.ref('vins');
+
         const app = {
             data: [],
             filteredData: [],
@@ -609,7 +673,14 @@ CAT00275CFL12345..."></textarea>
             },
 
             init() {
-                // Login obligatorio - no auto login
+                // Verificar sesión guardada
+                const session = localStorage.getItem('vin_tracker_session');
+                if (session) {
+                    const parsed = JSON.parse(session);
+                    this.currentUser = parsed.email;
+                    this.userRole = parsed.role;
+                    this.showMainInterface();
+                }
             },
 
             login() {
@@ -643,6 +714,8 @@ CAT00275CFL12345..."></textarea>
             logout() {
                 if (confirm('Logout?')) {
                     localStorage.removeItem('vin_tracker_session');
+                    // Detener listener de Firebase
+                    vinsRef.off();
                     location.reload();
                 }
             },
@@ -662,21 +735,52 @@ CAT00275CFL12345..."></textarea>
                     document.getElementById('techMessage').style.display = 'flex';
                 }
                 
-                this.loadData();
-                this.updateStats();
-                this.render();
+                // Iniciar sincronización con Firebase
+                this.setupRealtimeSync();
             },
 
-            loadData() {
-                const saved = localStorage.getItem('vin_tracker_data');
-                this.data = saved ? JSON.parse(saved) : [];
-                this.filteredData = [...this.data];
-            },
+            setupRealtimeSync() {
+                const statusDiv = document.getElementById('syncStatus');
+                
+                // Escuchar cambios en tiempo real
+                vinsRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        // Convertir objeto Firebase a array
+                        this.data = Object.keys(data).map(key => ({
+                            firebaseKey: key,
+                            ...data[key]
+                        }));
+                        // Ordenar por timestamp descendente
+                        this.data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    } else {
+                        this.data = [];
+                    }
+                    
+                    this.filteredData = [...this.data];
+                    this.updateStats();
+                    this.renderTable();
+                    
+                    statusDiv.innerHTML = '<i class="fas fa-wifi" style="font-size: 10px; margin-right: 4px;"></i> SYNCHRONIZED';
+                    statusDiv.classList.remove('offline');
+                    document.getElementById('lastUpdate').textContent = 'Updated: ' + new Date().toLocaleString();
+                }, (error) => {
+                    console.error('Firebase error:', error);
+                    statusDiv.innerHTML = '<i class="fas fa-wifi-slash" style="font-size: 10px; margin-right: 4px;"></i> OFFLINE';
+                    statusDiv.classList.add('offline');
+                });
 
-            saveData() {
-                localStorage.setItem('vin_tracker_data', JSON.stringify(this.data));
-                this.updateStats();
-                this.render();
+                // Detectar conexión
+                const connectedRef = database.ref(".info/connected");
+                connectedRef.on("value", (snap) => {
+                    if (snap.val() === true) {
+                        statusDiv.innerHTML = '<i class="fas fa-wifi" style="font-size: 10px; margin-right: 4px;"></i> SYNCHRONIZED';
+                        statusDiv.classList.remove('offline');
+                    } else {
+                        statusDiv.innerHTML = '<i class="fas fa-wifi-slash" style="font-size: 10px; margin-right: 4px;"></i> OFFLINE';
+                        statusDiv.classList.add('offline');
+                    }
+                });
             },
 
             updateStats() {
@@ -689,7 +793,6 @@ CAT00275CFL12345..."></textarea>
                 document.getElementById('statInspected').textContent = stats.Inspected;
                 document.getElementById('statNotFound').textContent = stats['Not Found'];
                 document.getElementById('statTotal').textContent = stats.Total;
-                document.getElementById('lastUpdate').textContent = 'Updated: ' + new Date().toLocaleString();
             },
 
             handleSearch() {
@@ -730,7 +833,7 @@ CAT00275CFL12345..."></textarea>
                 document.getElementById('batchVins').focus();
             },
 
-            processBatchVins() {
+            async processBatchVins() {
                 if (this.userRole !== 'manager') return;
                 
                 const textarea = document.getElementById('batchVins');
@@ -747,35 +850,35 @@ CAT00275CFL12345..."></textarea>
 
                 if (vins.length === 0) return;
 
-                let addedCount = 0;
+                const updates = {};
                 const entryDate = new Date().toISOString().split('T')[0];
 
                 vins.forEach(vin => {
                     const serialMatch = vin.match(/(FL|R8|ZE|KR|2X|P9).*$/i);
                     const serialNumber = serialMatch ? serialMatch[0] : '';
                     
-                    this.data.unshift({
-                        id: Date.now() + Math.random(),
+                    // Crear nueva entrada con push() para obtener ID único
+                    const newKey = vinsRef.push().key;
+                    updates[newKey] = {
                         vin: vin,
                         serialNumber: serialNumber,
                         entryDate: entryDate,
                         status: 'Pending',
                         assignedTech: '',
                         lastUpdate: null,
-                        comments: ''
-                    });
-                    addedCount++;
+                        comments: '',
+                        timestamp: Date.now()
+                    };
                 });
 
-                this.saveData();
-                textarea.value = '';
-                if (this.searchTerm) this.handleSearch();
-                alert(`✅ Added ${addedCount} VINs`);
-            },
-
-            render() {
-                this.renderTable();
-                this.updateStats();
+                try {
+                    // Actualizar Firebase (esto disparará el listener automáticamente)
+                    await vinsRef.update(updates);
+                    textarea.value = '';
+                    alert(`✅ Added ${vins.length} VINs`);
+                } catch (error) {
+                    alert('Error adding VINs: ' + error.message);
+                }
             },
 
             renderTable() {
@@ -807,11 +910,11 @@ CAT00275CFL12345..."></textarea>
                     
                     tr.innerHTML = `
                         <td>${index + 1}</td>
-                        <td><input type="text" class="input-cell" value="${row.vin}" data-field="vin" data-id="${row.id}" ${vinReadonly}></td>
+                        <td><input type="text" class="input-cell" value="${row.vin}" data-field="vin" data-key="${row.firebaseKey}" ${vinReadonly}></td>
                         <td><input type="text" class="input-cell" value="${row.serialNumber}" readonly style="font-family: monospace; color: #60a5fa; font-weight: 600;"></td>
-                        <td><input type="date" class="input-cell" value="${row.entryDate}" data-field="entryDate" data-id="${row.id}" ${dateReadonly}></td>
+                        <td><input type="date" class="input-cell" value="${row.entryDate}" data-field="entryDate" data-key="${row.firebaseKey}" ${dateReadonly}></td>
                         <td>
-                            <select class="input-cell" data-field="status" data-id="${row.id}" ${statusDisabled}>
+                            <select class="input-cell" data-field="status" data-key="${row.firebaseKey}" ${statusDisabled}>
                                 <option value="Pending" ${row.status === 'Pending' ? 'selected' : ''}>Pending</option>
                                 <option value="Inspected" ${row.status === 'Inspected' ? 'selected' : ''}>Inspected</option>
                                 <option value="Not Found" ${row.status === 'Not Found' ? 'selected' : ''}>Not Found</option>
@@ -819,7 +922,7 @@ CAT00275CFL12345..."></textarea>
                         </td>
                         <td><input type="text" class="input-cell" value="${row.assignedTech}" readonly style="color: #94a3b8; font-size: 12px;"></td>
                         <td><input type="text" class="input-cell" value="${row.lastUpdate ? new Date(row.lastUpdate).toLocaleString() : ''}" readonly style="color: #94a3b8; font-size: 12px;"></td>
-                        <td><input type="text" class="input-cell" value="${row.comments}" data-field="comments" data-id="${row.id}" placeholder="Add comment..."></td>
+                        <td><input type="text" class="input-cell" value="${row.comments}" data-field="comments" data-key="${row.firebaseKey}" placeholder="Add comment..."></td>
                     `;
                     
                     tbody.appendChild(tr);
@@ -829,67 +932,78 @@ CAT00275CFL12345..."></textarea>
                     let oldValue = input.value;
                     input.addEventListener('focus', () => { oldValue = input.value; });
                     input.addEventListener('change', (e) => {
-                        const id = parseFloat(e.target.dataset.id);
+                        const key = e.target.dataset.key;
                         const field = e.target.dataset.field;
-                        this.handleEdit(id, field, e.target.value, oldValue);
+                        this.handleEdit(key, field, e.target.value, oldValue);
                     });
                 });
             },
 
-            handleEdit(id, field, value, oldValue) {
+            async handleEdit(key, field, value, oldValue) {
                 if (this.userRole === 'tech' && !['status', 'comments'].includes(field)) {
                     this.renderTable();
                     return;
                 }
 
-                const row = this.data.find(r => r.id === id);
-                if (!row) return;
+                if (!key) return;
 
-                if (field === 'vin') {
-                    const vin = value.toString().trim().toUpperCase();
-                    const serialMatch = vin.match(/(FL|R8|ZE|KR|2X|P9).*$/i);
-                    row.serialNumber = serialMatch ? serialMatch[0] : '';
-                    if (vin !== '') {
-                        if (row.status === '') row.status = 'Pending';
-                    } else {
-                        row.status = '';
-                        row.serialNumber = '';
+                try {
+                    const rowRef = database.ref('vins/' + key);
+                    
+                    if (field === 'vin') {
+                        const vin = value.toString().trim().toUpperCase();
+                        const serialMatch = vin.match(/(FL|R8|ZE|KR|2X|P9).*$/i);
+                        const serialNumber = serialMatch ? serialMatch[0] : '';
+                        
+                        await rowRef.update({
+                            vin: vin,
+                            serialNumber: serialNumber
+                        });
+                    } else if (field === 'status') {
+                        let oldStatus = oldValue ? oldValue.toString().trim() : '';
+                        let newStatus = value ? value.toString().trim() : '';
+
+                        if (['in progress', 'not found'].includes(newStatus.toLowerCase())) {
+                            newStatus = 'Not Found';
+                        }
+
+                        if (oldStatus === 'Pending' && newStatus !== 'Pending') {
+                            await rowRef.update({
+                                status: newStatus,
+                                assignedTech: this.currentUser,
+                                lastUpdate: new Date().toISOString()
+                            });
+                        } else if (oldStatus !== 'Pending' && this.userRole === 'tech') {
+                            // Tech no puede cambiar status si no es de Pending
+                            return;
+                        } else {
+                            await rowRef.update({
+                                status: newStatus
+                            });
+                        }
+                    } else if (field === 'comments' || field === 'entryDate') {
+                        const updateData = { [field]: value };
+                        if (field === 'comments') {
+                            updateData.lastUpdate = new Date().toISOString();
+                        }
+                        await rowRef.update(updateData);
                     }
+                } catch (error) {
+                    alert('Error updating: ' + error.message);
+                    this.renderTable();
                 }
-
-                if (field === 'status') {
-                    let oldStatus = oldValue ? oldValue.toString().trim() : '';
-                    let newStatus = value ? value.toString().trim() : '';
-
-                    if (['in progress', 'not found'].includes(newStatus.toLowerCase())) {
-                        newStatus = 'Not Found';
-                        row.status = newStatus;
-                    }
-
-                    if (oldStatus === 'Pending' && newStatus !== 'Pending') {
-                        row.assignedTech = this.currentUser;
-                        row.lastUpdate = new Date().toISOString();
-                    } else if (oldStatus !== 'Pending' && this.userRole === 'tech') {
-                        row.status = oldStatus;
-                        this.render();
-                        return;
-                    }
-                }
-
-                row[field] = value;
-                this.saveData();
-                if (this.searchTerm) this.handleSearch();
             },
 
-            resetData() {
+            async resetData() {
                 if (this.userRole !== 'manager') return;
-                if (confirm('Delete all data?')) {
-                    this.data = [];
-                    this.filteredData = [];
-                    this.searchTerm = '';
-                    document.getElementById('searchInput').value = '';
-                    localStorage.removeItem('vin_tracker_data');
-                    this.render();
+                if (confirm('Delete all data? This will affect all connected devices.')) {
+                    try {
+                        await vinsRef.remove();
+                        this.searchTerm = '';
+                        document.getElementById('searchInput').value = '';
+                    } catch (error) {
+                        alert('Error deleting: ' + error.message);
+                    }
                 }
             },
 
@@ -928,6 +1042,11 @@ CAT00275CFL12345..."></textarea>
             },
 
             generateReport() {
+                document.getElementById('reportModal').style.display = 'block';
+                setTimeout(() => this.renderChart(), 100);
+            },
+
+            renderChart() {
                 const grupos = {};
                 this.data.forEach(row => {
                     let status = row.status || '';
@@ -937,12 +1056,49 @@ CAT00275CFL12345..."></textarea>
                     grupos[status].push(row);
                 });
 
-                this.renderReport(grupos);
-                this.renderChart(grupos);
-                document.getElementById('reportModal').style.display = 'block';
+                const ctx = document.getElementById('statusChart');
+                if (!ctx) return;
+                
+                if (this.chart) this.chart.destroy();
+                
+                const labels = Object.keys(grupos);
+                const data = labels.map(l => grupos[l].length);
+                
+                const colors = labels.map(s => {
+                    if (s === 'Pending') return '#ef4444';
+                    if (s === 'Inspected') return '#10b981';
+                    if (s === 'Not Found') return '#f59e0b';
+                    return '#6366f1';
+                });
+                
+                this.chart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors,
+                            borderWidth: 0,
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { 
+                                position: 'bottom',
+                                labels: { color: '#f8fafc', padding: 20 }
+                            }
+                        },
+                        cutout: '60%'
+                    }
+                });
+                
+                this.renderReportList(grupos);
             },
 
-            renderReport(grupos) {
+            renderReportList(grupos) {
                 const container = document.getElementById('reportContent');
                 const orden = ["Inspected", "Pending", "Not Found"];
                 const todos = orden.concat(Object.keys(grupos).filter(s => !orden.includes(s)));
@@ -1013,7 +1169,7 @@ CAT00275CFL12345..."></textarea>
                 
                 let yPos = 45;
                 
-                todos.forEach((status, index) => {
+                todos.forEach((status) => {
                     if (!grupos[status]) return;
                     const items = grupos[status];
                     
@@ -1054,47 +1210,6 @@ CAT00275CFL12345..."></textarea>
                 });
                 
                 doc.save(`Analytics_Report_${new Date().toISOString().split('T')[0]}.pdf`);
-            },
-
-            renderChart(grupos) {
-                const ctx = document.getElementById('statusChart');
-                if (!ctx) return;
-                
-                if (this.chart) this.chart.destroy();
-                
-                const labels = Object.keys(grupos);
-                const data = labels.map(l => grupos[l].length);
-                
-                const colors = labels.map(s => {
-                    if (s === 'Pending') return '#ef4444';
-                    if (s === 'Inspected') return '#10b981';
-                    if (s === 'Not Found') return '#f59e0b';
-                    return '#6366f1';
-                });
-                
-                this.chart = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: data,
-                            backgroundColor: colors,
-                            borderWidth: 0,
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { 
-                                position: 'bottom',
-                                labels: { color: '#f8fafc', padding: 20 }
-                            }
-                        },
-                        cutout: '60%'
-                    }
-                });
             },
 
             closeReport() {
