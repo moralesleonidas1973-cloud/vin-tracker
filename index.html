@@ -25,8 +25,6 @@
         .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
         .loader { border: 3px solid rgba(255,255,255,0.1); border-radius: 50%; border-top: 3px solid var(--primary); width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .syncing { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -136,13 +134,13 @@
         </div>
 
         <div id="techSection" class="hidden mb-6">
-            <div class="glass-panel p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-start gap-3">
+             <div class="glass-panel p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-start gap-3">
                 <i class="fas fa-info-circle text-amber-400 mt-1"></i>
                 <div>
                     <h4 class="text-amber-200 font-semibold text-sm">Modo Técnico - Actualización Limitada</h4>
-                    <p class="text-amber-200/70 text-xs mt-1">Puedes cambiar el estado de "Pending" a "Inspected" o "Not Found" y agregar comentarios. Los cambios se sincronizan en tiempo real.</p>
+                    <p class="text-amber-200/70 text-xs mt-1">Puedes cambiar el estado de "Pending" a "Inspected" o "Not Found" y agregar comentarios.</p>
                 </div>
-            </div>
+             </div>
         </div>
 
         <div class="flex flex-col md:flex-row justify-between gap-4 mb-4">
@@ -200,7 +198,6 @@
         </div>
     </div>
 
-    <!-- Report Modal -->
     <div id="reportModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="glass-panel w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl flex flex-col">
             <div class="p-6 border-b border-white/10 flex justify-between items-center sticky top-0 bg-[#1e293b]/95 backdrop-blur z-10">
@@ -218,13 +215,11 @@
         </div>
     </div>
 
-    <!-- FIREBASE SDK Y LÓGICA -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, push, update, remove, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getDatabase, ref, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // IMPORTANTE: URL corregida sin espacio al final
         const firebaseConfig = {
             apiKey: "AIzaSyD3uWheIL3CuqF4yAetxLIEt8DMcKY9W98",
             authDomain: "vin-tracker-f0834.firebaseapp.com",
@@ -240,7 +235,6 @@
         const auth = getAuth(appFb);
         let dbRef = null;
 
-        // Configuración local de usuarios (simulando directorio corporativo)
         const USER_CONFIG = {
             'manager@cat.com': { password: 'admin123', role: 'manager', name: 'Manager' },
             'tech@cat.com': { password: 'tech123', role: 'tech', name: 'Technician' }
@@ -258,8 +252,7 @@
             init() {
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        // Usuario autenticado en Firebase
-                        console.log("Firebase Auth: Usuario autenticado", user.uid);
+                        console.log("Usuario autenticado:", user.uid);
                         const savedSession = JSON.parse(localStorage.getItem('vin_tracker_session'));
                         if(savedSession) {
                             this.currentUser = savedSession.email;
@@ -268,7 +261,6 @@
                             this.showMainInterface();
                         }
                     } else {
-                        // No autenticado
                         document.getElementById('loginView').classList.remove('hidden');
                         document.getElementById('appView').classList.add('hidden');
                         document.getElementById('appView').classList.remove('flex');
@@ -300,9 +292,8 @@
                 btn.innerHTML = '<div class="loader border-white/30 border-t-white w-5 h-5"></div> Conectando...';
 
                 try {
-                    // PASO CRÍTICO: Autenticación anónima en Firebase
-                    // Esto permite que las reglas "auth != null" funcionen
-                    await signInAnonymously(auth);
+                    // Intentar login con Firebase Auth
+                    await signInWithEmailAndPassword(auth, email, password);
                     
                     this.currentUser = email;
                     this.userRole = userConfig.role;
@@ -315,10 +306,34 @@
                     }));
 
                 } catch (error) {
-                    console.error("Error de autenticación:", error);
-                    errorDiv.textContent = 'Error de conexión con Firebase: ' + error.message;
-                    errorDiv.classList.remove('hidden');
-                    btn.innerHTML = '<span>Acceder al Sistema</span><i class="fas fa-arrow-right"></i>';
+                    console.error("Error de login:", error);
+                    
+                    // Si el usuario no existe en Firebase, crearlo
+                    if (error.code === 'auth/user-not-found') {
+                        try {
+                            await createUserWithEmailAndPassword(auth, email, password);
+                            // Login automático después de crear
+                            await signInWithEmailAndPassword(auth, email, password);
+                            
+                            this.currentUser = email;
+                            this.userRole = userConfig.role;
+                            this.userName = userConfig.name;
+                            
+                            localStorage.setItem('vin_tracker_session', JSON.stringify({
+                                email: email,
+                                role: this.userRole,
+                                name: this.userName
+                            }));
+                        } catch (createError) {
+                            errorDiv.textContent = 'Error creando usuario: ' + createError.message;
+                            errorDiv.classList.remove('hidden');
+                            btn.innerHTML = '<span>Acceder al Sistema</span><i class="fas fa-arrow-right"></i>';
+                        }
+                    } else {
+                        errorDiv.textContent = error.message;
+                        errorDiv.classList.remove('hidden');
+                        btn.innerHTML = '<span>Acceder al Sistema</span><i class="fas fa-arrow-right"></i>';
+                    }
                 }
             },
 
@@ -365,45 +380,20 @@
                                 ...data[key]
                             });
                         });
-                        // Ordenar por fecha de entrada descendente
-                        this.data.sort((a, b) => {
-                            const dateA = a.timestamp || 0;
-                            const dateB = b.timestamp || 0;
-                            return dateB - dateA;
-                        });
+                        this.data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
                     }
                     
                     this.filteredData = [...this.data];
                     this.render();
-                    
-                    // Actualizar indicador de sincronización
-                    const syncStatus = document.getElementById('syncStatus');
-                    syncStatus.innerHTML = `
-                        <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                        <span class="text-xs text-emerald-400 font-medium">Sincronizado</span>
-                    `;
-                    setTimeout(() => {
-                        syncStatus.innerHTML = `
-                            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                            <span class="text-xs text-emerald-400 font-medium">Conectado</span>
-                        `;
-                    }, 2000);
-                    
                 }, (error) => {
-                    console.error("Error de Firebase:", error);
-                    document.getElementById('syncStatus').innerHTML = `
-                        <div class="w-2 h-2 rounded-full bg-red-500"></div>
-                        <span class="text-xs text-red-400 font-medium">Error de conexión</span>
-                    `;
+                    console.error("Error de base de datos:", error);
                 });
             },
 
             render() {
                 this.updateStats();
                 this.renderTable();
-                const now = new Date();
-                document.getElementById('lastUpdate').textContent = 
-                    `Actualizado: ${now.toLocaleTimeString()}`;
+                document.getElementById('lastUpdate').textContent = `Actualizado: ${new Date().toLocaleTimeString()}`;
             },
 
             updateStats() {
@@ -435,7 +425,6 @@
                     const isPending = row.status === 'Pending';
                     const canEditStatus = isManager || isPending;
                     
-                    // Formatear fecha de última actualización
                     let lastUpdateStr = '-';
                     if (row.lastUpdate) {
                         const date = new Date(row.lastUpdate);
@@ -448,7 +437,6 @@
                         });
                     }
 
-                    // Select de estado
                     let statusSelect = '';
                     if (isManager) {
                         statusSelect = `
@@ -460,7 +448,6 @@
                             </select>
                         `;
                     } else if (isPending) {
-                        // Técnico solo puede cambiar si está Pending
                         statusSelect = `
                             <select onchange="app.updateStatus('${row.firebaseId}', this.value)" 
                                     class="bg-slate-800/50 border border-white/10 rounded px-2 py-1 text-xs text-white focus:border-indigo-500 outline-none cursor-pointer">
@@ -470,7 +457,6 @@
                             </select>
                         `;
                     } else {
-                        // Solo mostrar badge
                         const badgeClass = row.status === 'Pending' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
                                          row.status === 'Inspected' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
                                          'bg-amber-500/20 text-amber-400 border-amber-500/30';
@@ -516,7 +502,6 @@
                 this.renderTable();
             },
 
-            // OPERACIONES FIREBASE
             async processBatchVins() {
                 if (this.userRole !== 'manager') return alert("Acceso denegado");
 
@@ -524,10 +509,7 @@
                 const text = textarea.value.trim();
                 if (!text) return;
 
-                const vins = text.split(/[\n,\s\t]+/)
-                    .map(v => v.trim().toUpperCase())
-                    .filter(v => v.length > 5);
-
+                const vins = text.split(/[\n,\s\t]+/).map(v => v.trim().toUpperCase()).filter(v => v.length > 5);
                 if (vins.length === 0) return;
 
                 const entryDate = new Date().toISOString().split('T')[0];
@@ -561,31 +543,27 @@
                 const row = this.data.find(r => r.firebaseId === id);
                 if (!row) return;
 
-                // Validaciones de permisos
                 if (this.userRole === 'tech' && row.status !== 'Pending') {
                     alert("Solo puedes modificar registros Pendientes");
-                    this.renderTable(); // Reset UI
+                    this.renderTable();
                     return;
                 }
 
                 const updates = {
                     status: newStatus,
-                    lastUpdate: new Date().toISOString() // FECHA CORREGIDA AQUÍ
+                    lastUpdate: new Date().toISOString()
                 };
 
-                // Si cambia de Pending a otro estado, asignar técnico
                 if (row.status === 'Pending' && newStatus !== 'Pending') {
                     updates.assignedTech = this.userName || this.currentUser;
                 }
 
-                // Si el manager cambia de vuelta a Pending, limpiar técnico
                 if (this.userRole === 'manager' && newStatus === 'Pending') {
                     updates.assignedTech = '';
                 }
 
                 try {
                     await update(ref(db, 'vins/' + id), updates);
-                    console.log("Estado actualizado correctamente");
                 } catch (error) {
                     console.error("Error al actualizar:", error);
                     alert("Error al actualizar: " + error.message);
@@ -604,15 +582,11 @@
                 }
             },
 
-            // EXPORTACIONES
             exportExcel() {
                 if (this.data.length === 0) return alert('No hay datos');
                 const exportData = this.data.map(r => ({
-                    'VIN': r.vin,
-                    'Serial': r.serialNumber,
-                    'Fecha_Entrada': r.entryDate,
-                    'Estado': r.status,
-                    'Tecnico': r.assignedTech,
+                    'VIN': r.vin, 'Serial': r.serialNumber, 'Fecha_Entrada': r.entryDate,
+                    'Estado': r.status, 'Tecnico': r.assignedTech,
                     'Ultima_Actualizacion': r.lastUpdate ? new Date(r.lastUpdate).toLocaleString() : '',
                     'Comentarios': r.comments
                 }));
@@ -633,10 +607,7 @@
                 doc.autoTable({
                     head: [['VIN', 'Serial', 'Fecha', 'Estado', 'Técnico', 'Actualizado', 'Comentarios']],
                     body: this.data.map(r => [
-                        r.vin, 
-                        r.serialNumber, 
-                        r.entryDate, 
-                        r.status, 
+                        r.vin, r.serialNumber, r.entryDate, r.status, 
                         r.assignedTech || '-', 
                         r.lastUpdate ? new Date(r.lastUpdate).toLocaleDateString() : '-', 
                         r.comments
@@ -716,7 +687,6 @@
             }
         };
 
-        // Exponer a window para eventos HTML
         window.app = app;
         app.init();
     </script>
