@@ -54,8 +54,8 @@
                         <input type="password" id="loginPassword" class="glass-input w-full px-4 py-2.5 rounded-lg" placeholder="••••••••">
                     </div>
                     <button type="button" onclick="app.login()" id="loginBtn" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold py-2.5 rounded-lg transition-all transform hover:scale-[1.02] shadow-lg shadow-indigo-500/25 flex justify-center items-center gap-2">
-                        <span>Access System</span>
-                        <i class="fas fa-arrow-right"></i>
+                        <span id="btnText">Access System</span>
+                        <i id="btnIcon" class="fas fa-arrow-right"></i>
                     </button>
                 </div>
                 <div id="loginError" class="text-red-400 text-sm text-center mt-4 hidden"></div>
@@ -122,12 +122,15 @@
                     <span class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded border border-indigo-500/30">Manager Only</span>
                 </div>
                 <textarea id="batchVins" class="glass-input w-full h-32 p-3 rounded-lg font-mono text-sm mb-3" placeholder="CAT00275CR8Y05091&#10;CAT00275CKRY05091..."></textarea>
-                <div class="flex gap-3">
+                <div class="flex gap-3 flex-wrap">
                     <button onclick="app.processBatchVins()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
                         <i class="fas fa-plus"></i> Add to Database
                     </button>
                     <button onclick="document.getElementById('batchVins').value=''" class="bg-white/5 hover:bg-white/10 text-slate-300 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                        Clear
+                        Clear Input
+                    </button>
+                    <button onclick="app.clearAllVins()" class="bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ml-auto">
+                        <i class="fas fa-trash-alt"></i> Clear All VINs
                     </button>
                 </div>
             </div>
@@ -217,7 +220,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, push, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -261,6 +264,7 @@
                             this.showMainInterface();
                         }
                     } else {
+                        this.resetLoginButton();
                         document.getElementById('loginView').classList.remove('hidden');
                         document.getElementById('appView').classList.add('hidden');
                         document.getElementById('appView').classList.remove('flex');
@@ -268,11 +272,30 @@
                 });
             },
 
+            resetLoginButton() {
+                const btn = document.getElementById('loginBtn');
+                const btnText = document.getElementById('btnText');
+                const btnIcon = document.getElementById('btnIcon');
+                
+                btn.disabled = false;
+                btnText.textContent = 'Access System';
+                btnIcon.className = 'fas fa-arrow-right';
+            },
+
+            setLoadingButton() {
+                const btn = document.getElementById('loginBtn');
+                const btnText = document.getElementById('btnText');
+                const btnIcon = document.getElementById('btnIcon');
+                
+                btn.disabled = true;
+                btnText.textContent = 'Connecting...';
+                btnIcon.className = 'fas fa-circle-notch fa-spin';
+            },
+
             async login() {
                 const email = document.getElementById('loginEmail').value;
                 const password = document.getElementById('loginPassword').value;
                 const errorDiv = document.getElementById('loginError');
-                const btn = document.getElementById('loginBtn');
                 
                 errorDiv.classList.add('hidden');
 
@@ -289,10 +312,7 @@
                     return;
                 }
 
-                // Guardar estado original del botón
-                const originalContent = btn.innerHTML;
-                btn.innerHTML = '<div class="loader border-white/30 border-t-white w-5 h-5 mr-2"></div> Connecting...';
-                btn.disabled = true;
+                this.setLoadingButton();
 
                 try {
                     await signInWithEmailAndPassword(auth, email, password);
@@ -307,7 +327,7 @@
                         name: this.userName
                     }));
                     
-                    // El botón se resetea automáticamente porque la página cambia de vista
+                    // La interfaz se actualizará automáticamente por onAuthStateChanged
 
                 } catch (error) {
                     console.error("Login error:", error);
@@ -326,15 +346,16 @@
                                 role: this.userRole,
                                 name: this.userName
                             }));
+                            
+                            // La interfaz se actualizará automáticamente por onAuthStateChanged
+                            
                         } catch (createError) {
-                            btn.innerHTML = originalContent;
-                            btn.disabled = false;
+                            this.resetLoginButton();
                             errorDiv.textContent = 'Error creating user: ' + createError.message;
                             errorDiv.classList.remove('hidden');
                         }
                     } else {
-                        btn.innerHTML = originalContent;
-                        btn.disabled = false;
+                        this.resetLoginButton();
                         errorDiv.textContent = error.message;
                         errorDiv.classList.remove('hidden');
                     }
@@ -428,7 +449,6 @@
                     
                     const isManager = this.userRole === 'manager';
                     const isPending = row.status === 'Pending';
-                    const canEditStatus = isManager || isPending;
                     
                     let lastUpdateStr = '-';
                     if (row.lastUpdate) {
@@ -556,6 +576,30 @@
                 } catch (error) {
                     console.error("Error adding VINs:", error);
                     alert("Error adding VINs: " + error.message);
+                }
+            },
+
+            async clearAllVins() {
+                if (this.userRole !== 'manager') {
+                    alert("Access denied");
+                    return;
+                }
+
+                if (!confirm('WARNING: This will delete ALL VIN records from the database. This action cannot be undone. Continue?')) {
+                    return;
+                }
+
+                try {
+                    // Borrar todos los VINs uno por uno
+                    const promises = this.data.map(row => {
+                        return remove(ref(db, 'vins/' + row.firebaseId));
+                    });
+                    
+                    await Promise.all(promises);
+                    alert('✅ All VINs have been cleared from the database');
+                } catch (error) {
+                    console.error("Error clearing VINs:", error);
+                    alert("Error clearing VINs: " + error.message);
                 }
             },
 
