@@ -315,8 +315,11 @@
                 this.setLoadingButton();
 
                 try {
-                    await signInWithEmailAndPassword(auth, email, password);
+                    // Intentar login
+                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                    console.log("Login successful:", userCredential.user.uid);
                     
+                    // Guardar sesión
                     this.currentUser = email;
                     this.userRole = userConfig.role;
                     this.userName = userConfig.name;
@@ -327,14 +330,19 @@
                         name: this.userName
                     }));
                     
-                    // La interfaz se actualizará automáticamente por onAuthStateChanged
-
+                    // Forzar la transición de vista inmediatamente
+                    this.showMainInterface();
+                    
                 } catch (error) {
                     console.error("Login error:", error);
                     
                     if (error.code === 'auth/user-not-found') {
                         try {
-                            await createUserWithEmailAndPassword(auth, email, password);
+                            // Crear usuario
+                            const newUser = await createUserWithEmailAndPassword(auth, email, password);
+                            console.log("User created:", newUser.user.uid);
+                            
+                            // Login automático
                             await signInWithEmailAndPassword(auth, email, password);
                             
                             this.currentUser = email;
@@ -347,7 +355,8 @@
                                 name: this.userName
                             }));
                             
-                            // La interfaz se actualizará automáticamente por onAuthStateChanged
+                            // Forzar la transición de vista inmediatamente
+                            this.showMainInterface();
                             
                         } catch (createError) {
                             this.resetLoginButton();
@@ -373,14 +382,20 @@
             },
 
             showMainInterface() {
+                // Ocultar login y mostrar app
                 document.getElementById('loginView').classList.add('hidden');
                 const appView = document.getElementById('appView');
                 appView.classList.remove('hidden');
                 appView.classList.add('flex');
                 
+                // Resetear botón de login por si acaso
+                this.resetLoginButton();
+                
+                // Configurar header
                 document.getElementById('headerUserName').textContent = this.userName || this.currentUser;
                 document.getElementById('headerUserRole').textContent = this.userRole;
 
+                // Mostrar/ocultar secciones según rol
                 if (this.userRole === 'manager') {
                     document.getElementById('managerSection').classList.remove('hidden');
                     document.getElementById('techSection').classList.add('hidden');
@@ -389,6 +404,7 @@
                     document.getElementById('techSection').classList.remove('hidden');
                 }
 
+                // Iniciar listener de datos
                 this.listenToData();
             },
 
@@ -590,7 +606,6 @@
                 }
 
                 try {
-                    // Borrar todos los VINs uno por uno
                     const promises = this.data.map(row => {
                         return remove(ref(db, 'vins/' + row.firebaseId));
                     });
